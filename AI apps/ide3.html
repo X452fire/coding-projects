@@ -1,0 +1,1657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Resizable Code Generator UI</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Pyodide -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+    <style>
+        /* --- Global / Typography --- */
+        :root {
+            --bg: #121212;
+            --panel: #000000;
+            --panel-outer: #1e1e1e;
+            --muted: #555555;
+            --border: #333333;
+            --accent: #00ff00;
+            --line-num: #858585;
+            --control: #444444;
+            --hover: #2a2d2e;
+            --selection: #094771;
+            --text-main: #cccccc;
+            /* New Theme Variables */
+            --bar-bg: #333333;
+            --item-selected: #37373d;
+            --text-header: #cccccc;
+            --dropdown-bg: #252526;
+            --hover-bg: #444444;
+            /* Cursor Settings */
+            --cursor-size: 20px;
+            --cursor-color: rgba(128, 128, 128, 0.5);
+        }
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            /* Font Update: Inter */
+            font-family: "Inter", "Segoe UI", "SF Pro Text", sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+            /* Prevent text selection during drag */
+        }
+        /* Custom Cursor Global Hide Class */
+        body.custom-cursor-active,
+        body.custom-cursor-active * {
+            cursor: none !important;
+        }
+        /* Custom Cursor */
+        #customCursor {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            width: var(--cursor-size);
+            height: var(--cursor-size);
+            background: var(--cursor-color);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            /* Hidden by default, shown via JS */
+            align-items: center;
+            justify-content: center;
+            transition: width 0.1s, height 0.1s, border-radius 0.1s, background 0.1s;
+            /* Border removed, Opacity added for translucency */
+            border: none;
+            opacity: 0.6;
+            box-sizing: border-box;
+        }
+        /* Nipple removed */
+        #customCursor::after {
+            display: none;
+        }
+        /* Text Mode Cursor */
+        #customCursor.cursor-text {
+            width: 4px;
+            height: 20px;
+            border-radius: 2px;
+            background: #888;
+            /* Or var(--cursor-color) if opaque enough */
+            border: none;
+            /* No border for text cursor either */
+        }
+        /* --- Menu Bar --- */
+        #menubar {
+            height: 30px;
+            background: var(--bar-bg);
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            font-size: 13px;
+            flex-shrink: 0;
+            color: var(--text-main);
+            /* Rounded bottom edges */
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
+            justify-content: space-between;
+            /* Space between left items and play button */
+        }
+        .menu-left {
+            display: flex;
+            height: 100%;
+            align-items: center;
+        }
+        .menu-item {
+            position: relative;
+            padding: 0 10px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            border-radius: 6px;
+            /* Rounded corners */
+        }
+        .menu-item:hover {
+            background: var(--hover-bg);
+        }
+        .dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: var(--dropdown-bg);
+            border: 1px solid var(--border);
+            min-width: 160px;
+            z-index: 5000;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            padding: 4px 0;
+            border-radius: 8px;
+            /* Rounded corners */
+        }
+        .menu-item:hover .dropdown {
+            display: block;
+        }
+        .dropdown div {
+            padding: 6px 20px;
+            color: var(--text-main);
+        }
+        .dropdown div:hover {
+            background: var(--selection);
+            color: #fff;
+        }
+        /* Play Button */
+        #playButton {
+            padding: 0 12px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #3bd671;
+            font-size: 14px;
+            border-radius: 6px;
+        }
+        #playButton:hover {
+            background: var(--hover-bg);
+        }
+        /* overall layout */
+        .app {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+            padding: 4px;
+            gap: 4px;
+        }
+        /* --- Explorer --- */
+        #explorerWrapper {
+            width: 200px;
+            min-width: 140px;
+            border: 1px solid var(--border);
+            /* Changed to full border */
+            background: var(--panel-outer);
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            padding: 0;
+            border-radius: 10px;
+            overflow: hidden;
+            /* Rounded corners */
+            position: relative;
+            /* For selection box */
+        }
+        #explorerHeader {
+            padding: 10px;
+            font-weight: 700;
+            /* Bold Heading */
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-header);
+            flex-shrink: 0;
+        }
+        #fileList {
+            padding: 0;
+            overflow: auto;
+            flex: 1;
+            position: relative;
+        }
+        #settingsBtn {
+            padding: 10px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-main);
+            background: var(--panel-outer);
+            font-weight: 600;
+            /* Bold button text */
+        }
+        #settingsBtn:hover {
+            background: var(--hover);
+            color: #fff;
+        }
+        /* file/folder items */
+        .tree-node {
+            padding: 4px 8px;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+            font-size: 13px;
+            color: var(--text-main);
+        }
+        .tree-node:hover {
+            background: var(--hover);
+        }
+        .tree-node.selected {
+            background: var(--item-selected);
+            color: #fff;
+        }
+        .tree-indent {
+            display: inline-block;
+            width: 16px;
+            flex-shrink: 0;
+        }
+        .tree-icon {
+            margin-right: 6px;
+            width: 16px;
+            text-align: center;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+        .tree-arrow {
+            margin-right: 4px;
+            font-size: 10px;
+            width: 12px;
+            display: inline-block;
+            text-align: center;
+            transition: transform 0.1s;
+        }
+        .tree-arrow.expanded {
+            transform: rotate(90deg);
+        }
+        .tree-arrow.hidden {
+            visibility: hidden;
+        }
+        .tree-node.drag-over {
+            background: var(--item-selected);
+            outline: 1px dashed #555;
+        }
+        /* Selection Box */
+        .selection-box {
+            position: absolute;
+            background: rgba(128, 128, 128, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            pointer-events: none;
+            z-index: 9999;
+            display: none;
+        }
+        /* Indicators */
+        .indicator-file {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #3bd671;
+            margin-left: auto;
+            margin-right: 4px;
+        }
+        .indicator-folder {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: orange;
+            margin-left: auto;
+            margin-right: 4px;
+        }
+        /* --- Right area --- */
+        .rightArea {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-width: 0;
+            box-sizing: border-box;
+            background: var(--bg);
+            padding: 0;
+            gap: 4px;
+            /* Gap for rounded look */
+        }
+        /* Editor row */
+        .editorRow {
+            display: flex;
+            flex: 1 1 60%;
+            min-height: 120px;
+            min-width: 0;
+            gap: 4px;
+        }
+        .editorWrapper {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: var(--panel-outer);
+            box-sizing: border-box;
+            min-width: 120px;
+            min-height: 120px;
+            flex: 1 1 0;
+            position: relative;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            /* Rounded corners & border */
+        }
+        /* Headers - Fixed Height Match */
+        .editorWrapper h3,
+        #outputHeader {
+            margin: 0;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            font-size: 13px;
+            background: var(--panel-outer);
+            color: var(--text-header);
+            font-weight: 700;
+            /* Bold Heading */
+            border-bottom: 1px solid var(--border);
+            box-sizing: border-box;
+        }
+        #outputHeader {
+            justify-content: space-between;
+        }
+        /* Output Selector */
+        #outputSelector {
+            font-size: 13px;
+            color: var(--text-header);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            /* Rounded corners */
+            font-weight: 700;
+            /* Bold */
+        }
+        #outputSelector:hover {
+            background: var(--hover-bg);
+            color: var(--text-main);
+        }
+        #outputSelector::after {
+            content: "▼";
+            font-size: 10px;
+            margin-left: 4px;
+        }
+        /* Dropdown moved to body for fixed positioning */
+        #outputDropdown {
+            display: none;
+            position: fixed;
+            background: var(--dropdown-bg);
+            border: 1px solid var(--border);
+            min-width: 140px;
+            z-index: 5000;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            padding: 4px 0;
+            border-radius: 8px;
+            /* Rounded corners */
+        }
+        #outputDropdown div {
+            padding: 6px 12px;
+            color: var(--text-main);
+            font-size: 13px;
+        }
+        #outputDropdown div:hover {
+            background: var(--selection);
+            color: #fff;
+        }
+        /* content area */
+        .editorArea {
+            position: relative;
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            background: var(--panel);
+        }
+        /* line numbers */
+        .lineNumbers {
+            width: 48px;
+            box-sizing: border-box;
+            padding: 10px 0;
+            text-align: right;
+            padding-right: 12px;
+            color: var(--line-num);
+            font-family: inherit;
+            /* Changed to inherit (Inter) */
+            font-size: 14px;
+            line-height: 20px;
+            pointer-events: none;
+            background: var(--panel);
+            flex-shrink: 0;
+        }
+        /* main text area / gpt output */
+        .editorBox {
+            box-sizing: border-box;
+            flex: 1;
+            padding: 10px;
+            background: var(--panel);
+            color: var(--text-main);
+            font-family: inherit;
+            /* Changed to inherit (Inter) */
+            font-size: 14px;
+            line-height: 20px;
+            overflow: auto;
+            border: none;
+            outline: none;
+            resize: none;
+            white-space: pre;
+            user-select: text;
+            /* Allow text selection in editors */
+        }
+        .editorBox[contenteditable="true"] {
+            min-height: 100%;
+        }
+        /* splitters */
+        .splitter-vertical {
+            width: 8px;
+            background: transparent;
+            flex-shrink: 0;
+            cursor: default;
+            /* Default cursor for splitter unless custom is on */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .splitter-vertical:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        .splitter-horizontal {
+            height: 8px;
+            background: transparent;
+            flex-shrink: 0;
+            cursor: default;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .splitter-horizontal:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        /* Terminal */
+        .terminalWrapper {
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border);
+            background: var(--panel);
+            box-sizing: border-box;
+            min-height: 120px;
+            max-height: 70%;
+            flex: 0 1 200px;
+            border-radius: 10px;
+            overflow: hidden;
+            /* Rounded corners */
+        }
+        .terminalHeader {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 10px;
+            background: var(--panel-outer);
+            border-bottom: 1px solid var(--border);
+        }
+        .terminalHeader h3 {
+            margin: 0;
+            font-size: 12px;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: var(--text-header);
+        }
+        /* Bold Heading */
+        .terminalHeader button {
+            background: none;
+            border: none;
+            color: var(--text-header);
+            font-size: 16px;
+            border-radius: 4px;
+        }
+        .terminalHeader button:hover {
+            color: var(--text-main);
+            background: var(--hover-bg);
+        }
+        .terminalContent {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 auto;
+            min-height: 0;
+            background: var(--panel);
+            font-family: inherit;
+            /* Changed to inherit (Inter) */
+        }
+        #terminalInput {
+            margin: 0;
+            padding: 8px 10px;
+            border: none;
+            border-bottom: 1px solid var(--border);
+            background: var(--panel);
+            color: var(--text-main);
+            font-family: inherit;
+            outline: none;
+            user-select: text;
+        }
+        #terminalOutput {
+            flex: 1;
+            padding: 10px;
+            overflow: auto;
+            font-size: 13px;
+            color: var(--text-main);
+            user-select: text;
+        }
+        /* context menu - FIXED POSITION */
+        .contextMenu {
+            position: fixed;
+            display: none;
+            z-index: 3000;
+            background: #252526;
+            border: 1px solid #454545;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            padding: 4px 0;
+            min-width: 150px;
+            border-radius: 8px;
+            /* Rounded corners */
+        }
+        .contextMenu div {
+            padding: 6px 20px;
+            white-space: nowrap;
+            font-size: 13px;
+            color: #ccc;
+        }
+        .contextMenu div:hover {
+            background: var(--selection);
+            color: #fff;
+        }
+        /* Modals */
+        #fileModal,
+        #confirmModal,
+        #apiModal,
+        #settingsModal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 4000;
+        }
+        #fileModalContent,
+        #confirmModalContent,
+        #apiModalContent,
+        #settingsModalContent {
+            width: 360px;
+            background: #252526;
+            padding: 20px;
+            border-radius: 12px;
+            /* Rounded corners */
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+        #settingsModalContent {
+            width: 500px;
+        }
+        /* Wider settings modal */
+        #fileModalContent label,
+        #confirmModalContent h3,
+        #apiModalContent label,
+        #settingsModalContent h3 {
+            font-size: 14px;
+            font-weight: 700;
+            margin: 0;
+            color: #ddd;
+            /* Bold Heading */
+        }
+        #fileModalContent input,
+        #apiModalContent input,
+        #settingsModalContent input[type="text"],
+        #settingsModalContent input[type="number"] {
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #3c3c3c;
+            background: #3c3c3c;
+            /* Rounded corners */
+            color: #fff;
+            font-family: inherit;
+            outline: none;
+            user-select: text;
+        }
+        #fileModalContent input:focus,
+        #apiModalContent input:focus {
+            border-color: var(--selection);
+        }
+        .error-text {
+            color: #f48771;
+            font-size: 12px;
+            min-height: 16px;
+        }
+        /* Settings Specific */
+        .settings-section {
+            margin-bottom: 16px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 16px;
+        }
+        .settings-section:last-child {
+            border-bottom: none;
+        }
+        .settings-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .settings-label {
+            font-size: 13px;
+            color: #ccc;
+        }
+        .settings-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #ccc;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .settings-close:hover {
+            color: #fff;
+        }
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 24px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked+.slider {
+            background-color: var(--selection);
+        }
+        input:focus+.slider {
+            box-shadow: 0 0 1px var(--selection);
+        }
+        input:checked+.slider:before {
+            transform: translateX(16px);
+        }
+        /* utilities */
+        .hidden {
+            display: none !important;
+        }
+        button {
+            font-family: inherit;
+        }
+        .btn-primary {
+            background: var(--selection);
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+        /* Rounded & Bold */
+        .btn-secondary {
+            background: #3c3c3c;
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+        .btn-danger {
+            background: #8e2a2a;
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+        .btn-primary:hover {
+            background: #0b5a8e;
+        }
+        .btn-secondary:hover {
+            background: #4c4c4c;
+        }
+        .btn-danger:hover {
+            background: #a83232;
+        }
+    </style>
+</head>
+<body>
+    <div id="customCursor"></div>
+    <div id="selectionBox" class="selection-box"></div>
+    <!-- Menu Bar -->
+    <div id="menubar">
+        <div class="menu-left">
+            <div class="menu-item">
+                <span>File</span>
+                <div class="dropdown">
+                    <div id="menuNewFile">New File</div>
+                    <div id="menuNewFolder">New Folder</div>
+                </div>
+            </div>
+            <div class="menu-item">
+                <span>View</span>
+                <div class="dropdown">
+                    <div id="menuShowTerminal">Show Terminal</div>
+                </div>
+            </div>
+        </div>
+        <div id="playButton" title="Run Code (Python)">
+            ▶
+        </div>
+    </div>
+    <div class="app">
+        <!-- Explorer -->
+        <div id="explorerWrapper">
+            <div id="explorerHeader">Explorer</div>
+            <div id="fileList"></div>
+            <div id="settingsBtn">Settings</div>
+        </div>
+        <!-- Right area -->
+        <div class="rightArea" id="rightArea">
+            <div class="editorRow" id="editorRow">
+                <div class="editorWrapper" id="mainWrapper">
+                    <h3>Main Input</h3>
+                    <div class="editorArea">
+                        <div class="lineNumbers" id="lineNumbersMain"></div>
+                        <textarea id="mainInput" class="editorBox" placeholder="No file opened..." readonly></textarea>
+                    </div>
+                </div>
+                <div class="splitter-vertical" id="splitterVertical" title="Drag to resize editors"></div>
+                <div class="editorWrapper" id="gptWrapper">
+                    <div id="outputHeader">
+                        <div id="outputSelector">ChatGPT</div>
+                        <!-- Dropdown moved to body -->
+                    </div>
+                    <div class="editorArea">
+                        <div class="lineNumbers" id="lineNumbersGPT"></div>
+                        <div id="gptOutput" class="editorBox" contenteditable="true" spellcheck="false"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="splitter-horizontal" id="splitterHorizontal" title="Drag to resize editors/terminal"></div>
+            <div class="terminalWrapper" id="terminalWrapper">
+                <div class="terminalHeader">
+                    <h3>Terminal</h3>
+                    <button id="toggleTerminal" title="Hide Terminal">×</button>
+                </div>
+                <div class="terminalContent" id="terminalContent">
+                    <input id="terminalInput" placeholder="> Type commands here..." />
+                    <div id="terminalOutput"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Output Dropdown (Moved to Body) -->
+    <div id="outputDropdown">
+        <div data-val="ChatGPT">ChatGPT</div>
+        <div data-val="Claude">Claude</div>
+        <div data-val="Gemini">Gemini</div>
+        <div data-val="Copilot">Copilot</div>
+        <div data-val="Custom API">Custom API</div>
+    </div>
+    <!-- Context Menu -->
+    <div id="contextMenu" class="contextMenu">
+        <div id="renameItem">Rename</div>
+        <div id="deleteItem">Delete</div>
+    </div>
+    <!-- Modals -->
+    <div id="fileModal">
+        <div id="fileModalContent">
+            <label id="fileModalLabel">Enter name</label>
+            <input id="fileInput" type="text" autocomplete="off" />
+            <div id="modalError" class="error-text"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button id="fileCancel" class="btn-secondary">Cancel</button>
+                <button id="fileSubmit" class="btn-primary">Submit</button>
+            </div>
+        </div>
+    </div>
+    <div id="confirmModal">
+        <div id="confirmModalContent">
+            <h3 id="confirmTitle">Confirm Action</h3>
+            <div id="confirmMessage" style="color:#bbb;font-size:13px;"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+                <button id="confirmCancel" class="btn-secondary">Cancel</button>
+                <button id="confirmOk" class="btn-danger">Confirm</button>
+            </div>
+        </div>
+    </div>
+    <div id="apiModal">
+        <div id="apiModalContent">
+            <label>Enter API Key</label>
+            <input id="apiInput" type="password" placeholder="sk-..." autocomplete="off" />
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+                <button id="apiCancel" class="btn-secondary">Cancel</button>
+                <button id="apiSubmit" class="btn-primary">Submit</button>
+            </div>
+        </div>
+    </div>
+    <div id="settingsModal">
+        <div id="settingsModalContent" style="position:relative;">
+            <span class="settings-close" id="settingsClose">×</span>
+            <h3>Settings</h3>
+            <div class="settings-section">
+                <div class="settings-row">
+                    <span class="settings-label">Theme</span>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <select id="themeSelect"
+                            style="background:#3c3c3c;color:#fff;border:1px solid #555;padding:4px;border-radius:6px;">
+                            <option value="dark">Dark Mode</option>
+                            <option value="light">Light Mode</option>
+                            <option value="custom">Custom Color</option>
+                        </select>
+                        <input id="customThemeColor" type="color"
+                            style="display:none; width:40px; height:24px; padding:0; border:none; border-radius:4px;" />
+                    </div>
+                </div>
+            </div>
+            <div class="settings-section">
+                <div class="settings-row">
+                    <span class="settings-label">Custom Cursor Set</span>
+                    <label class="switch">
+                        <input type="checkbox" id="cursorToggle">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="settings-row">
+                    <span class="settings-label">Cursor Size (px)</span>
+                    <input id="cursorSizeInput" type="number" value="20" min="5" max="100" style="width:60px;" />
+                </div>
+                <div class="settings-row">
+                    <span class="settings-label">Cursor Color</span>
+                    <input id="cursorColorInput" type="color" value="#808080"
+                        style="width:40px;height:24px;padding:0;border:none;border-radius:4px;" />
+                </div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;">
+                <button id="settingsSave" class="btn-primary">Save & Close</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        /* -------------------------
+           Utilities
+           ------------------------- */
+        const STORAGE_KEY = 'codegen_ui_v2';
+        function generateId() { return '_' + Math.random().toString(36).substr(2, 9); }
+        /* Data Structure */
+        let fileSystem = {
+            root: { id: 'root', type: 'folder', name: 'root', children: [], expanded: true },
+            nodes: {}
+        };
+        let currentFileId = null;
+        let selectedNodeIds = new Set(['root']); // Changed to Set for multi-select
+        let appSettings = {
+            theme: 'dark',
+            customColor: '#000000',
+            cursorSize: 20,
+            cursorColor: '#808080',
+            useCustomCursor: true // Default ON
+        };
+        /* Pyodide */
+        let pyodide = null;
+        async function initPyodide() {
+            try {
+                printTerminal('Loading Python environment...');
+                pyodide = await loadPyodide();
+                pyodide.setStdin({ stdin: () => window.prompt() });
+                printTerminal('Python environment loaded.');
+            } catch (e) {
+                printTerminal('Error loading Python: ' + e.message);
+            }
+        }
+        /* Storage */
+        function persistStorage() {
+            try {
+                // Convert Set to Array for storage
+                const sel = Array.from(selectedNodeIds);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({ fileSystem, currentFileId, selectedNodeIds: sel, appSettings }));
+            } catch (e) { console.warn('Storage error', e); }
+        }
+        function loadStorage() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const data = JSON.parse(raw);
+                    if (data.fileSystem) fileSystem = data.fileSystem;
+                    if (data.currentFileId) currentFileId = data.currentFileId;
+                    if (data.selectedNodeIds) selectedNodeIds = new Set(data.selectedNodeIds);
+                    else if (data.selectedNodeId) selectedNodeIds = new Set([data.selectedNodeId]); // Legacy support
+                    if (data.appSettings) appSettings = { ...appSettings, ...data.appSettings };
+                    // Validate
+                    if (selectedNodeIds.size === 0) selectedNodeIds.add('root');
+                    return true;
+                }
+            } catch (e) { console.warn('Load error', e); }
+            return false;
+        }
+        /* -------------------------
+           File System Logic
+           ------------------------- */
+        function createNode(parentId, name, type) {
+            // Enforce unique names
+            if (checkNameExists(parentId, name)) return null;
+            const id = generateId();
+            const node = {
+                id, parentId, type, name,
+                children: type === 'folder' ? [] : undefined,
+                expanded: type === 'folder' ? true : undefined,
+                content: type === 'file' ? { main: '', gpt: '', terminal: '' } : undefined
+            };
+            fileSystem.nodes[id] = node;
+            if (parentId === 'root') fileSystem.root.children.push(id);
+            else {
+                const p = fileSystem.nodes[parentId];
+                if (p && p.children) p.children.push(id);
+            }
+            return id;
+        }
+        function deleteNode(id) {
+            const node = fileSystem.nodes[id];
+            if (!node) return;
+            const parent = node.parentId === 'root' ? fileSystem.root : fileSystem.nodes[node.parentId];
+            if (parent && parent.children) parent.children = parent.children.filter(cid => cid !== id);
+            if (node.type === 'folder') [...node.children].forEach(deleteNode);
+            delete fileSystem.nodes[id];
+            if (currentFileId === id) { currentFileId = null; clearMainArea(); }
+            selectedNodeIds.delete(id);
+        }
+        function renameNode(id, newName) { if (fileSystem.nodes[id]) fileSystem.nodes[id].name = newName; }
+        function moveNode(id, newParentId) {
+            const node = fileSystem.nodes[id];
+            if (!node || node.parentId === newParentId) return;
+            if (node.type === 'folder') {
+                let p = newParentId;
+                while (p !== 'root') { if (p === id) return; p = fileSystem.nodes[p].parentId; }
+            }
+            const oldParent = node.parentId === 'root' ? fileSystem.root : fileSystem.nodes[node.parentId];
+            if (oldParent && oldParent.children) oldParent.children = oldParent.children.filter(cid => cid !== id);
+            node.parentId = newParentId;
+            const newParent = newParentId === 'root' ? fileSystem.root : fileSystem.nodes[newParentId];
+            if (newParent && newParent.children) newParent.children.push(id);
+        }
+        function getChildren(parentId) {
+            const p = parentId === 'root' ? fileSystem.root : fileSystem.nodes[parentId];
+            return p ? p.children.map(id => fileSystem.nodes[id]) : [];
+        }
+        function checkNameExists(parentId, name, excludeId = null) {
+            const children = getChildren(parentId);
+            return children.some(c => c.name === name && c.id !== excludeId);
+        }
+        function findNodeByName(name) {
+            const stack = [...fileSystem.root.children];
+            while (stack.length > 0) {
+                const id = stack.pop();
+                const node = fileSystem.nodes[id];
+                if (node.name === name) return node;
+                if (node.type === 'folder' && node.children) stack.push(...node.children);
+            }
+            return null;
+        }
+        function isValidFilename(name) { return /^[^\s]+\.[^\s]+$/.test(name); }
+        /* -------------------------
+           UI: Explorer & Multi-Select
+           ------------------------- */
+        const fileList = document.getElementById('fileList');
+        const selectionBox = document.getElementById('selectionBox');
+        let isSelecting = false;
+        let startX, startY;
+        function renderExplorer() {
+            fileList.innerHTML = '';
+            renderTree('root', 0);
+        }
+        function renderTree(parentId, depth) {
+            const childrenIds = parentId === 'root' ? fileSystem.root.children : fileSystem.nodes[parentId].children;
+            const children = childrenIds.map(id => fileSystem.nodes[id]);
+            children.sort((a, b) => {
+                if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+                return a.name.localeCompare(b.name);
+            });
+            let activeFolderId = null;
+            if (currentFileId && fileSystem.nodes[currentFileId]) activeFolderId = fileSystem.nodes[currentFileId].parentId;
+            children.forEach(node => {
+                const div = document.createElement('div');
+                div.className = 'tree-node';
+                div.setAttribute('data-id', node.id); // For selection logic
+                div.draggable = true;
+                if (selectedNodeIds.has(node.id)) div.classList.add('selected');
+                div.ondragstart = (e) => {
+                    if (!selectedNodeIds.has(node.id)) {
+                        selectedNodeIds.clear();
+                        selectedNodeIds.add(node.id);
+                        renderExplorer();
+                    }
+                    e.dataTransfer.setData('text/plain', JSON.stringify(Array.from(selectedNodeIds)));
+                    e.stopPropagation();
+                };
+                div.ondragover = (e) => { e.preventDefault(); e.stopPropagation(); div.classList.add('drag-over'); };
+                div.ondragleave = (e) => { e.preventDefault(); e.stopPropagation(); div.classList.remove('drag-over'); };
+                div.ondrop = (e) => {
+                    e.preventDefault(); e.stopPropagation(); div.classList.remove('drag-over');
+                    const data = e.dataTransfer.getData('text/plain');
+                    if (data) {
+                        const ids = JSON.parse(data);
+                        ids.forEach(draggedId => {
+                            if (draggedId !== node.id) {
+                                if (node.type === 'folder') moveNode(draggedId, node.id);
+                            }
+                        });
+                        renderExplorer(); persistStorage();
+                    }
+                };
+                for (let i = 0; i < depth; i++) {
+                    const indent = document.createElement('span'); indent.className = 'tree-indent'; div.appendChild(indent);
+                }
+                const arrow = document.createElement('span'); arrow.className = 'tree-arrow';
+                if (node.type === 'folder') {
+                    arrow.textContent = '▶'; if (node.expanded) arrow.classList.add('expanded');
+                } else arrow.classList.add('hidden');
+                div.appendChild(arrow);
+                const icon = document.createElement('span'); icon.className = 'tree-icon';
+                icon.textContent = node.type === 'folder' ? '📁' : '📄';
+                div.appendChild(icon);
+                const nameSpan = document.createElement('span'); nameSpan.textContent = node.name; div.appendChild(nameSpan);
+                if (node.id === currentFileId) {
+                    const ind = document.createElement('div'); ind.className = 'indicator-file'; div.appendChild(ind);
+                }
+                if (node.id === activeFolderId) {
+                    const ind = document.createElement('div'); ind.className = 'indicator-folder'; div.appendChild(ind);
+                }
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    if (e.ctrlKey || e.metaKey) {
+                        if (selectedNodeIds.has(node.id)) selectedNodeIds.delete(node.id);
+                        else selectedNodeIds.add(node.id);
+                    } else {
+                        selectedNodeIds.clear();
+                        selectedNodeIds.add(node.id);
+                        if (node.type === 'folder') node.expanded = !node.expanded;
+                        else loadFile(node.id);
+                    }
+                    renderExplorer(); persistStorage();
+                };
+                div.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    if (!selectedNodeIds.has(node.id)) {
+                        selectedNodeIds.clear();
+                        selectedNodeIds.add(node.id);
+                        renderExplorer();
+                    }
+                    showContextMenu(e.clientX, e.clientY);
+                };
+                fileList.appendChild(div);
+                if (node.type === 'folder' && node.expanded) renderTree(node.id, depth + 1);
+            });
+        }
+        fileList.ondragover = (e) => { e.preventDefault(); };
+        fileList.ondrop = (e) => {
+            e.preventDefault();
+            const data = e.dataTransfer.getData('text/plain');
+            if (data) {
+                const ids = JSON.parse(data);
+                ids.forEach(draggedId => moveNode(draggedId, 'root'));
+                renderExplorer(); persistStorage();
+            }
+        };
+        /* Selection Box Logic */
+        fileList.addEventListener('mousedown', (e) => {
+            if (e.target === fileList || e.target.classList.contains('tree-indent')) {
+                isSelecting = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                selectionBox.style.left = startX + 'px';
+                selectionBox.style.top = startY + 'px';
+                selectionBox.style.width = '0px';
+                selectionBox.style.height = '0px';
+                selectionBox.style.display = 'block';
+                if (!e.ctrlKey && !e.metaKey) selectedNodeIds.clear();
+                renderExplorer();
+            }
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (!isSelecting) return;
+            const currentX = e.clientX;
+            const currentY = e.clientY;
+            const width = Math.abs(currentX - startX);
+            const height = Math.abs(currentY - startY);
+            const left = Math.min(currentX, startX);
+            const top = Math.min(currentY, startY);
+            selectionBox.style.width = width + 'px';
+            selectionBox.style.height = height + 'px';
+            selectionBox.style.left = left + 'px';
+            selectionBox.style.top = top + 'px';
+            // Intersection Logic
+            const nodes = document.querySelectorAll('.tree-node');
+            const sbRect = selectionBox.getBoundingClientRect();
+            nodes.forEach(node => {
+                const nodeRect = node.getBoundingClientRect();
+                const intersect = !(nodeRect.right < sbRect.left ||
+                    nodeRect.left > sbRect.right ||
+                    nodeRect.bottom < sbRect.top ||
+                    nodeRect.top > sbRect.bottom);
+                const id = node.getAttribute('data-id');
+                if (intersect) selectedNodeIds.add(id);
+                // Note: We don't remove if not intersecting to allow "adding" to selection. 
+                // If user wants fresh selection they click without ctrl first.
+            });
+            // Update visual selection without full re-render for performance
+            nodes.forEach(node => {
+                if (selectedNodeIds.has(node.getAttribute('data-id'))) node.classList.add('selected');
+                else node.classList.remove('selected');
+            });
+        });
+        document.addEventListener('mouseup', () => {
+            if (isSelecting) {
+                isSelecting = false;
+                selectionBox.style.display = 'none';
+                persistStorage();
+            }
+        });
+        /* -------------------------
+           Modals & Menus
+           ------------------------- */
+        const modal = document.getElementById('fileModal');
+        const modalInput = document.getElementById('fileInput');
+        const modalError = document.getElementById('modalError');
+        const modalLabel = document.getElementById('fileModalLabel');
+        let modalAction = null;
+        function showModal(action, label, defaultVal = '') {
+            modalAction = action; modalLabel.textContent = label; modalInput.value = defaultVal;
+            modalError.textContent = ''; modal.style.display = 'flex'; setTimeout(() => modalInput.focus(), 50);
+        }
+        function hideModal() { modal.style.display = 'none'; modalAction = null; }
+        document.getElementById('fileCancel').onclick = hideModal;
+        document.getElementById('fileSubmit').onclick = () => {
+            const name = modalInput.value.trim();
+            if (!name) return;
+            const isFile = modalAction.type === 'newFile' || (modalAction.type === 'rename' && fileSystem.nodes[modalAction.targetId].type === 'file');
+            if (isFile && !isValidFilename(name)) { modalError.textContent = 'Invalid name. Must be "name.extension".'; return; }
+            let parentId = 'root';
+            // Determine parent based on single selection or root
+            let targetId = null;
+            if (selectedNodeIds.size === 1) targetId = Array.from(selectedNodeIds)[0];
+            if (modalAction.type === 'newFile' || modalAction.type === 'newFolder') {
+                if (targetId && targetId !== 'root' && fileSystem.nodes[targetId]) {
+                    const sel = fileSystem.nodes[targetId];
+                    parentId = sel.type === 'folder' ? sel.id : sel.parentId;
+                }
+            } else if (modalAction.type === 'rename') parentId = fileSystem.nodes[modalAction.targetId].parentId;
+            if (checkNameExists(parentId, name, modalAction.type === 'rename' ? modalAction.targetId : null)) {
+                modalError.textContent = `"${name}" already exists here.`; return;
+            }
+            if (modalAction.type === 'newFile') {
+                const id = createNode(parentId, name, 'file');
+                if (id) { loadFile(id); selectedNodeIds.clear(); selectedNodeIds.add(id); }
+            } else if (modalAction.type === 'newFolder') {
+                const id = createNode(parentId, name, 'folder');
+                if (id) { selectedNodeIds.clear(); selectedNodeIds.add(id); }
+            } else if (modalAction.type === 'rename') renameNode(modalAction.targetId, name);
+            persistStorage(); renderExplorer(); hideModal();
+        };
+        modalInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('fileSubmit').click(); });
+        /* Confirm Modal */
+        const confirmModal = document.getElementById('confirmModal');
+        const confirmMessage = document.getElementById('confirmMessage');
+        let onConfirmCallback = null;
+        function showConfirm(msg, callback) { confirmMessage.textContent = msg; onConfirmCallback = callback; confirmModal.style.display = 'flex'; }
+        function hideConfirm() { confirmModal.style.display = 'none'; onConfirmCallback = null; }
+        document.getElementById('confirmCancel').onclick = hideConfirm;
+        document.getElementById('confirmOk').onclick = () => { if (onConfirmCallback) onConfirmCallback(); hideConfirm(); };
+        /* API Modal */
+        const apiModal = document.getElementById('apiModal');
+        const apiInput = document.getElementById('apiInput');
+        function showApiModal() { apiInput.value = ''; apiModal.style.display = 'flex'; setTimeout(() => apiInput.focus(), 50); }
+        function hideApiModal() { apiModal.style.display = 'none'; }
+        document.getElementById('apiCancel').onclick = hideApiModal;
+        document.getElementById('apiSubmit').onclick = hideApiModal;
+        apiInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') hideApiModal(); });
+        /* Settings Modal */
+        const settingsModal = document.getElementById('settingsModal');
+        const themeSelect = document.getElementById('themeSelect');
+        const customThemeColor = document.getElementById('customThemeColor');
+        const cursorSizeInput = document.getElementById('cursorSizeInput');
+        const cursorColorInput = document.getElementById('cursorColorInput');
+        const cursorToggle = document.getElementById('cursorToggle');
+        document.getElementById('settingsBtn').onclick = () => {
+            themeSelect.value = appSettings.theme === 'custom' ? 'custom' : appSettings.theme;
+            cursorSizeInput.value = appSettings.cursorSize;
+            cursorColorInput.value = appSettings.cursorColor;
+            cursorToggle.checked = appSettings.useCustomCursor;
+            if (appSettings.theme === 'custom') {
+                customThemeColor.style.display = 'block';
+                customThemeColor.value = appSettings.customColor;
+            } else {
+                customThemeColor.style.display = 'none';
+            }
+            settingsModal.style.display = 'flex';
+        };
+        document.getElementById('settingsClose').onclick = () => settingsModal.style.display = 'none';
+        document.getElementById('settingsSave').onclick = () => {
+            appSettings.theme = themeSelect.value;
+            appSettings.cursorSize = parseInt(cursorSizeInput.value) || 20;
+            appSettings.cursorColor = cursorColorInput.value;
+            appSettings.useCustomCursor = cursorToggle.checked;
+            if (appSettings.theme === 'custom') {
+                appSettings.customColor = customThemeColor.value;
+            }
+            applySettings();
+            applyCursorMode();
+            persistStorage();
+            settingsModal.style.display = 'none';
+        };
+        themeSelect.onchange = () => {
+            if (themeSelect.value === 'custom') {
+                customThemeColor.style.display = 'block';
+                customThemeColor.value = appSettings.customColor;
+            } else {
+                customThemeColor.style.display = 'none';
+            }
+        };
+        /* Theme Logic */
+        function lightenColor(hex, percent) {
+            const num = parseInt(hex.replace("#", ""), 16),
+                amt = Math.round(2.55 * percent),
+                R = (num >> 16) + amt,
+                B = ((num >> 8) & 0x00FF) + amt,
+                G = (num & 0x0000FF) + amt;
+            return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 + (B < 255 ? B < 1 ? 0 : B : 255) * 0x100 + (G < 255 ? G < 1 ? 0 : G : 255)).toString(16).slice(1);
+        }
+        function applySettings() {
+            const root = document.documentElement;
+            // Cursor
+            root.style.setProperty('--cursor-size', appSettings.cursorSize + 'px');
+            root.style.setProperty('--cursor-color', appSettings.cursorColor);
+            // Theme
+            if (appSettings.theme === 'light') {
+                root.style.setProperty('--bg', '#f3f3f3');
+                root.style.setProperty('--panel', '#ffffff');
+                root.style.setProperty('--panel-outer', '#e0e0e0');
+                root.style.setProperty('--text-main', '#000000');
+                root.style.setProperty('--border', '#cccccc');
+                root.style.setProperty('--line-num', '#888888');
+                root.style.setProperty('--bar-bg', '#d0d0d0');
+                root.style.setProperty('--item-selected', '#cce8ff');
+                root.style.setProperty('--text-header', '#000000');
+                root.style.setProperty('--dropdown-bg', '#f0f0f0');
+                root.style.setProperty('--hover-bg', '#e0e0e0');
+            } else if (appSettings.theme === 'dark') {
+                root.style.setProperty('--bg', '#121212');
+                root.style.setProperty('--panel', '#000000');
+                root.style.setProperty('--panel-outer', '#1e1e1e');
+                root.style.setProperty('--text-main', '#cccccc');
+                root.style.setProperty('--border', '#333333');
+                root.style.setProperty('--line-num', '#858585');
+                root.style.setProperty('--bar-bg', '#333333');
+                root.style.setProperty('--item-selected', '#37373d');
+                root.style.setProperty('--text-header', '#cccccc');
+                root.style.setProperty('--dropdown-bg', '#252526');
+                root.style.setProperty('--hover-bg', '#444444');
+            } else if (appSettings.theme === 'custom') {
+                const mainColor = appSettings.customColor;
+                const lighter = lightenColor(mainColor, 20);
+                root.style.setProperty('--bg', mainColor);
+                root.style.setProperty('--panel', mainColor);
+                root.style.setProperty('--panel-outer', lighter);
+                root.style.setProperty('--text-main', '#cccccc');
+                root.style.setProperty('--border', lightenColor(mainColor, 30));
+                root.style.setProperty('--bar-bg', lighter);
+                root.style.setProperty('--item-selected', lightenColor(mainColor, 40));
+                root.style.setProperty('--text-header', '#cccccc');
+                root.style.setProperty('--dropdown-bg', lighter);
+                root.style.setProperty('--hover-bg', lightenColor(mainColor, 30));
+            }
+        }
+        function applyCursorMode() {
+            const cursorEl = document.getElementById('customCursor');
+            if (appSettings.useCustomCursor) {
+                document.body.classList.add('custom-cursor-active');
+                cursorEl.style.display = 'flex';
+            } else {
+                document.body.classList.remove('custom-cursor-active');
+                cursorEl.style.display = 'none';
+            }
+        }
+        /* Custom Cursor Logic */
+        const cursor = document.getElementById('customCursor');
+        document.addEventListener('mousemove', (e) => {
+            if (!appSettings.useCustomCursor) return;
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+            // Check for text input
+            const target = e.target;
+            const isText = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+            if (isText) {
+                cursor.classList.add('cursor-text');
+            } else {
+                cursor.classList.remove('cursor-text');
+            }
+        });
+        /* Menu Bar Actions */
+        document.getElementById('menuNewFile').onclick = () => showModal({ type: 'newFile' }, 'New File Name');
+        document.getElementById('menuNewFolder').onclick = () => showModal({ type: 'newFolder' }, 'New Folder Name');
+        document.getElementById('menuShowTerminal').onclick = () => {
+            document.getElementById('terminalWrapper').classList.remove('hidden');
+            document.getElementById('terminalWrapper').style.display = 'flex';
+        };
+        /* Output Selector */
+        const outputSelector = document.getElementById('outputSelector');
+        const outputDropdown = document.getElementById('outputDropdown');
+        outputSelector.onclick = (e) => {
+            e.stopPropagation();
+            if (outputDropdown.style.display === 'block') {
+                outputDropdown.style.display = 'none';
+            } else {
+                const rect = outputSelector.getBoundingClientRect();
+                outputDropdown.style.top = (rect.bottom + 4) + 'px';
+                outputDropdown.style.left = rect.left + 'px';
+                outputDropdown.style.display = 'block';
+            }
+        };
+        document.addEventListener('click', () => outputDropdown.style.display = 'none');
+        outputDropdown.querySelectorAll('div').forEach(div => {
+            div.onclick = (e) => {
+                e.stopPropagation(); const val = div.getAttribute('data-val');
+                outputSelector.childNodes[0].textContent = val; outputDropdown.style.display = 'none';
+                if (val === 'Custom API') showApiModal();
+            };
+        });
+        /* Context Menu */
+        const contextMenu = document.getElementById('contextMenu');
+        function showContextMenu(x, y) {
+            // Adjust menu items based on selection count
+            if (selectedNodeIds.size > 1) {
+                document.getElementById('renameItem').style.display = 'none';
+                document.getElementById('deleteItem').textContent = `Delete ${selectedNodeIds.size} items`;
+            } else {
+                document.getElementById('renameItem').style.display = 'block';
+                document.getElementById('deleteItem').textContent = 'Delete';
+            }
+            contextMenu.style.left = x + 'px';
+            contextMenu.style.top = y + 'px';
+            contextMenu.style.display = 'block';
+        }
+        document.addEventListener('click', () => contextMenu.style.display = 'none');
+        document.getElementById('renameItem').onclick = () => {
+            if (selectedNodeIds.size === 1) {
+                const id = Array.from(selectedNodeIds)[0];
+                showModal({ type: 'rename', targetId: id }, 'Rename to', fileSystem.nodes[id].name);
+            }
+        };
+        document.getElementById('deleteItem').onclick = () => {
+            if (selectedNodeIds.size > 0) {
+                showConfirm(`Delete ${selectedNodeIds.size} item(s)?`, () => {
+                    const ids = Array.from(selectedNodeIds);
+                    ids.forEach(id => deleteNode(id));
+                    renderExplorer(); persistStorage();
+                });
+            }
+        };
+        /* Editors */
+        const mainInput = document.getElementById('mainInput');
+        const gptOutput = document.getElementById('gptOutput');
+        const terminalOutput = document.getElementById('terminalOutput');
+        const terminalInput = document.getElementById('terminalInput');
+        const lineMain = document.getElementById('lineNumbersMain');
+        const lineGPT = document.getElementById('lineNumbersGPT');
+        function updateLineNumbers(el, container) {
+            const text = el.value || el.innerText || '';
+            const lines = text.length === 0 ? 1 : text.split('\n').length;
+            container.innerHTML = Array(lines).fill(0).map((_, i) => i + 1).join('<br>');
+        }
+        function loadFile(id) {
+            const node = fileSystem.nodes[id];
+            if (!node || node.type !== 'file') return;
+            currentFileId = id;
+            mainInput.value = node.content.main || '';
+            gptOutput.innerText = node.content.gpt || '';
+            mainInput.readOnly = false; mainInput.placeholder = "Type your code here...";
+            updateLineNumbers(mainInput, lineMain); updateLineNumbers(gptOutput, lineGPT);
+        }
+        function clearMainArea() {
+            mainInput.value = ''; mainInput.readOnly = true; mainInput.placeholder = "No file opened...";
+            gptOutput.innerText = ''; updateLineNumbers(mainInput, lineMain); updateLineNumbers(gptOutput, lineGPT);
+        }
+        function saveCurrent() {
+            if (currentFileId && fileSystem.nodes[currentFileId]) {
+                fileSystem.nodes[currentFileId].content.main = mainInput.value;
+                fileSystem.nodes[currentFileId].content.gpt = gptOutput.innerText;
+                persistStorage();
+            }
+        }
+        mainInput.addEventListener('input', () => { updateLineNumbers(mainInput, lineMain); saveCurrent(); });
+        gptOutput.addEventListener('input', () => { updateLineNumbers(gptOutput, lineGPT); saveCurrent(); });
+        mainInput.addEventListener('scroll', () => lineMain.scrollTop = mainInput.scrollTop);
+        gptOutput.addEventListener('scroll', () => lineGPT.scrollTop = gptOutput.scrollTop);
+        /* Terminal Logic */
+        function printTerminal(text) {
+            const div = document.createElement('div'); div.textContent = text;
+            terminalOutput.appendChild(div); terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        }
+        async function runPythonCode(filename, code) {
+            if (!pyodide) {
+                printTerminal('Error: Python environment not loaded yet.');
+                return;
+            }
+            try {
+                printTerminal(`Running ${filename}...`);
+                // Redirect stdout to terminal
+                pyodide.setStdout({ batched: (msg) => printTerminal(msg) });
+                await pyodide.runPythonAsync(code);
+                printTerminal('Done.');
+            } catch (e) {
+                printTerminal('Error: ' + e.message);
+            }
+        }
+        /* Terminal Input State */
+        let inputResolver = null;
+        let isWaitingForInput = false;
+        async function getTerminalInput(promptText) {
+            if (promptText) printTerminal(promptText);
+            isWaitingForInput = true;
+            terminalInput.focus();
+            return new Promise(resolve => {
+                inputResolver = resolve;
+            });
+        }
+        // Expose to Python
+        window.getTerminalInput = getTerminalInput;
+        async function runPythonCode(filename, code) {
+            if (!pyodide) {
+                printTerminal('Error: Python environment not loaded yet.');
+                return;
+            }
+            // Reset input state just in case
+            isWaitingForInput = false;
+            inputResolver = null;
+            try {
+                printTerminal(`Running ${filename}...`);
+                // Python Preamble: Transformer & Custom Input
+                const preamble = `
+import asyncio
+import js
+import ast
+async def __custom_input__(prompt=""):
+    return await js.getTerminalInput(prompt)
+class InputTransformer(ast.NodeTransformer):
+    def visit_Call(self, node):
+        if isinstance(node.func, ast.Name) and node.func.id == 'input':
+            return ast.Await(
+                value=ast.Call(
+                    func=ast.Name(id='__custom_input__', ctx=ast.Load()),
+                    args=node.args,
+                    keywords=node.keywords
+                )
+            )
+        return self.generic_visit(node)
+def transform_source(source):
+    tree = ast.parse(source)
+    InputTransformer().visit(tree)
+    ast.fix_missing_locations(tree)
+    return compile(tree, filename="<string>", mode="exec", flags=ast.PyCF_ALLOW_TOP_LEVEL_AWAIT)
+`;
+                // 1. Run Preamble
+                await pyodide.runPythonAsync(preamble);
+                // 2. Transform User Code
+                // We use pyodide global logic to transform the string source into a code object
+                pyodide.globals.set("user_source_code", code);
+                const transformedCode = await pyodide.runPythonAsync(`transform_source(user_source_code)`);
+                // 3. Execute with Top-Level Await
+                // eval_code_async runs the compiled code object
+                await pyodide.runPythonAsync(transformedCode);
+                printTerminal('Done.');
+            } catch (e) {
+                printTerminal('Error: ' + e.message);
+            } finally {
+                isWaitingForInput = false;
+                inputResolver = null;
+            }
+        }
+        terminalInput.addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter') {
+                const raw = terminalInput.value; // Don't trim immediately, preserve spaces if user wants
+                // --- Input Mode ---
+                if (isWaitingForInput) {
+                    printTerminal(raw); // Echo input
+                    terminalInput.value = '';
+                    isWaitingForInput = false;
+                    if (inputResolver) {
+                        const r = inputResolver;
+                        inputResolver = null;
+                        r(raw);
+                    }
+                    return;
+                }
+                // --- Command Mode ---
+                if (!raw.trim()) return;
+                printTerminal('> ' + raw);
+                terminalInput.value = '';
+                const parts = raw.trim().split(/\s+/);
+                const cmd = parts[0].toLowerCase();
+                const arg = parts[1];
+                if (cmd === 'make' && arg) {
+                    const filename = arg;
+                    if (!isValidFilename(filename)) { printTerminal(`Error: Invalid filename.`); return; }
+                    const node = findNodeByName(filename);
+                    if (!node || node.type !== 'file') { printTerminal(`Error: File not found.`); return; }
+                    const ext = filename.split('.').pop();
+                    printTerminal(`Compiling "${filename}"...`);
+                    setTimeout(() => {
+                        const generated = `// Generated ${ext} code for ${filename}\n// Source: ${node.content.main.substring(0, 30).replace(/\n/g, ' ')}...\n\nprint("Hello from ${ext}!");`;
+                        node.content.gpt = generated;
+                        if (currentFileId === node.id) { gptOutput.innerText = generated; updateLineNumbers(gptOutput, lineGPT); }
+                        printTerminal(`Success.`); saveCurrent();
+                    }, 600);
+                } else if (cmd === 'clear') {
+                    if (arg === 'gpt') {
+                        gptOutput.innerText = ''; updateLineNumbers(gptOutput, lineGPT);
+                        if (currentFileId && fileSystem.nodes[currentFileId]) fileSystem.nodes[currentFileId].content.gpt = '';
+                        saveCurrent(); printTerminal('ChatGPT cleared.');
+                    } else terminalOutput.innerHTML = '';
+                } else if (cmd === 'code' && arg) {
+                    if (!isValidFilename(arg)) { printTerminal(`Error: Invalid filename.`); return; }
+                    if (checkNameExists('root', arg)) printTerminal(`Error: Exists.`);
+                    else {
+                        const id = createNode('root', arg, 'file');
+                        if (id) { loadFile(id); selectedNodeIds.clear(); selectedNodeIds.add(id); renderExplorer(); persistStorage(); printTerminal(`Created ${arg}.`); }
+                        else printTerminal(`Error: Could not create.`);
+                    }
+                } else if (cmd === 'rm' && arg) {
+                    const node = findNodeByName(arg);
+                    if (node) { deleteNode(node.id); renderExplorer(); persistStorage(); printTerminal(`Deleted ${arg}.`); }
+                    else printTerminal(`Error: Not found.`);
+                } else if (cmd === 'md' && arg) {
+                    // Revert: Check existence
+                    if (checkNameExists('root', arg)) {
+                        printTerminal(`Error: Directory "${arg}" already exists.`);
+                    } else {
+                        createNode('root', arg, 'folder');
+                        renderExplorer(); persistStorage();
+                        printTerminal(`Created directory ${arg}.`);
+                    }
+                } else if (cmd === 'rd' && arg) {
+                    const node = findNodeByName(arg);
+                    if (node && node.type === 'folder') {
+                        deleteNode(node.id); renderExplorer(); persistStorage();
+                        printTerminal(`Removed directory ${arg}.`);
+                    } else {
+                        printTerminal(`Error: Directory not found.`);
+                    }
+                } else if (cmd === 'run' && arg) {
+                    const filename = arg;
+                    const node = findNodeByName(filename);
+                    if (!node || node.type !== 'file') { printTerminal(`Error: File "${filename}" not found.`); return; }
+                    if (!filename.endsWith('.py')) { printTerminal(`Error: Only .py files are supported.`); return; }
+                    await runPythonCode(filename, node.content.gpt);
+                } else {
+                    printTerminal('Unknown command.');
+                }
+            }
+        });
+        document.getElementById('toggleTerminal').onclick = () => document.getElementById('terminalWrapper').style.display = 'none';
+        /* Play Button Logic */
+        document.getElementById('playButton').onclick = async () => {
+            if (!currentFileId || !fileSystem.nodes[currentFileId]) {
+                printTerminal('Error: No file open.');
+                return;
+            }
+            const node = fileSystem.nodes[currentFileId];
+            if (!node.name.endsWith('.py')) {
+                printTerminal('Error: Only .py files are supported.');
+                return;
+            }
+            await runPythonCode(node.name, node.content.gpt);
+        };
+        /* Splitters */
+        const splitV = document.getElementById('splitterVertical');
+        splitV.onmousedown = (e) => {
+            e.preventDefault();
+            // Cursor is hidden globally, but we can still resize
+            const startX = e.clientX; const leftW = document.getElementById('mainWrapper').offsetWidth;
+            const onMove = (ev) => {
+                const dx = ev.clientX - startX;
+                document.getElementById('mainWrapper').style.flex = `0 0 ${leftW + dx}px`;
+                document.getElementById('gptWrapper').style.flex = `1 1 auto`;
+            };
+            const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+            document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
+        };
+        const splitH = document.getElementById('splitterHorizontal');
+        splitH.onmousedown = (e) => {
+            e.preventDefault();
+            const startY = e.clientY; const topH = document.getElementById('editorRow').offsetHeight;
+            const onMove = (ev) => {
+                const dy = ev.clientY - startY;
+                document.getElementById('editorRow').style.flex = `0 0 ${topH + dy}px`;
+                document.getElementById('terminalWrapper').style.flex = `1 1 auto`;
+            };
+            const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+            document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
+        };
+        /* Init */
+        loadStorage();
+        applySettings();
+        applyCursorMode(); // Apply cursor mode on init
+        renderExplorer();
+        if (currentFileId) loadFile(currentFileId);
+        initPyodide(); // Initialize Pyodide
+    </script>
+</body>
+</html>

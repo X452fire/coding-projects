@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI-OS</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{
+    --bg:#0a0a0a;
+    --fg:#ededed;
+    --panel:#141414;
+    --panel2:#1c1c1c;
+    --border:#333;
+    --muted:#888;
+    --accent:#ededed;
+  }
+  html.light{
+    --bg:#fafafa;
+    --fg:#111;
+    --panel:#fff;
+    --panel2:#f0f0f0;
+    --border:#ddd;
+    --muted:#777;
+    --accent:#111;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;font-family:"Segoe UI",Arial,sans-serif;color:var(--fg);overflow:hidden;}
+  #desktop{
+    position:relative;width:100%;height:100vh;
+    background:var(--bg);
+    overflow:hidden;user-select:none;
+    transition:background .2s,color .2s;
+  }
+  /* Desktop icons */
+  #icons{position:absolute;top:0;left:0;right:0;bottom:46px;}
+  .icon{
+    position:absolute;width:84px;text-align:center;cursor:pointer;padding:8px;border-radius:6px;
+    transition:background .15s;user-select:none;
+  }
+  .icon:hover{background:rgba(128,128,128,.15);}
+  .icon .glyph{
+    width:40px;height:40px;margin:0 auto 4px;display:flex;align-items:center;
+    justify-content:center;border:1px solid var(--border);border-radius:8px;
+    color:var(--fg);
+  }
+  .icon .glyph svg{width:22px;height:22px;display:block;}
+  .icon .label{font-size:11px;word-break:break-word;color:var(--fg);}
+
+  /* Windows */
+  .window{
+    position:absolute;min-width:320px;min-height:200px;
+    background:var(--panel);border:1px solid var(--border);
+    border-radius:6px;box-shadow:0 12px 30px rgba(0,0,0,.35);
+    display:flex;flex-direction:column;overflow:hidden;
+  }
+  .window.active{border-color:var(--accent);}
+  .win-header{
+    background:var(--panel2);padding:8px 10px;display:flex;
+    align-items:center;justify-content:space-between;cursor:move;
+    font-size:13px;font-weight:600;border-bottom:1px solid var(--border);
+  }
+  .win-header .title{display:flex;align-items:center;gap:6px;}
+  .win-controls{display:flex;gap:6px;}
+  .win-controls span{
+    width:14px;height:14px;border-radius:3px;display:inline-block;cursor:pointer;
+    text-align:center;line-height:14px;font-size:10px;border:1px solid var(--border);
+    color:var(--muted);
+  }
+  .win-controls span:hover{border-color:var(--accent);color:var(--fg);}
+  .win-body{flex:1;overflow:auto;padding:10px;font-size:13px;}
+  .win-resize{
+    position:absolute;right:0;bottom:0;width:14px;height:14px;cursor:nwse-resize;
+    opacity:.6;
+  }
+
+  /* Taskbar */
+  #taskbar{
+    position:absolute;left:0;right:0;bottom:0;height:46px;
+    background:var(--panel);
+    border-top:1px solid var(--border);display:flex;align-items:center;
+    padding:0 10px;gap:8px;z-index:9999;
+  }
+  #taskbar .tb-start{
+    background:transparent;color:var(--fg);font-weight:700;border:1px solid var(--border);
+    padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;
+  }
+  #taskbar .tb-start:hover{border-color:var(--accent);}
+  #taskbar .tb-item{
+    background:var(--panel2);border:1px solid var(--border);border-radius:6px;
+    padding:5px 12px;font-size:12px;cursor:pointer;color:var(--fg);
+    max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  #taskbar .tb-item.active{border-color:var(--accent);}
+  #clock{font-size:12px;opacity:.7;flex-shrink:0;}
+
+  /* Search bar */
+  #searchWrap{position:relative;flex:1;max-width:420px;margin:0 auto;}
+  #searchBar{
+    width:100%;background:var(--panel2);border:1px solid var(--border);
+    border-radius:6px;padding:7px 10px;font-size:13px;color:var(--fg);
+  }
+  #searchResults{
+    position:absolute;bottom:calc(100% + 6px);left:0;right:0;
+    background:var(--panel);border:1px solid var(--border);border-radius:6px;
+    max-height:280px;overflow:auto;display:none;box-shadow:0 -8px 24px rgba(0,0,0,.3);
+  }
+  #searchResults.open{display:block;}
+  #searchResults .res{
+    padding:8px 10px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--border);
+    display:flex;justify-content:space-between;gap:8px;
+  }
+  #searchResults .res:last-child{border-bottom:none;}
+  #searchResults .res:hover{background:var(--panel2);}
+  #searchResults .res .tag{color:var(--muted);font-size:11px;flex-shrink:0;}
+  #searchResults .empty{padding:10px;font-size:12px;color:var(--muted);}
+
+  /* Generic widgets */
+  input,textarea,select,button{
+    font-family:inherit;font-size:13px;background:var(--panel2);color:var(--fg);
+    border:1px solid var(--border);border-radius:4px;padding:6px 8px;
+  }
+  button{cursor:pointer;}
+  button:hover{border-color:var(--accent);}
+  textarea{width:100%;height:100%;resize:none;}
+  .row{display:flex;gap:6px;margin-bottom:6px;align-items:center;}
+  .grow{flex:1;}
+
+  /* File explorer */
+  .fe-list{list-style:none;margin:0;padding:0;}
+  .fe-list li{padding:4px 6px;border-radius:4px;cursor:pointer;display:flex;gap:6px;align-items:center;}
+  .fe-list li:hover{background:var(--panel2);}
+  .fe-path{font-size:12px;opacity:.7;margin-bottom:6px;}
+
+  /* Terminal */
+  .terminal{background:#000;color:#ddd;font-family:Consolas,monospace;
+    height:100%;padding:8px;overflow:auto;font-size:13px;}
+  html.light .terminal{background:#111;color:#eee;}
+  .terminal .line{white-space:pre-wrap;word-break:break-all;}
+  .terminal input{
+    background:transparent;border:none;color:inherit;font-family:inherit;
+    font-size:13px;width:80%;outline:none;
+  }
+
+  /* Chat (AI assistant) */
+  .chat{display:flex;flex-direction:column;height:100%;}
+  .chat-log{flex:1;overflow:auto;padding-right:4px;}
+  .chat-msg{margin-bottom:10px;padding:8px 10px;border-radius:6px;font-size:13px;line-height:1.4;border:1px solid var(--border);}
+  .chat-msg.user{background:var(--panel2);}
+  .chat-msg.assistant{background:var(--panel);}
+  .chat-msg.tool{background:var(--panel2);color:var(--muted);font-family:Consolas,monospace;font-size:12px;}
+  .chat-input{display:flex;gap:6px;margin-top:6px;}
+  .chat-input textarea{height:46px;}
+
+  /* Settings */
+  .settings-section{margin-bottom:16px;}
+  .settings-section h3{margin:0 0 6px;font-size:14px;}
+  .settings-section .hint{font-size:12px;color:var(--muted);margin:4px 0 8px;line-height:1.5;}
+  .settings-section ol{font-size:12px;color:var(--muted);line-height:1.6;padding-left:20px;}
+  .settings-tabs{display:flex;gap:6px;margin-bottom:12px;}
+  .settings-tabs button{flex:1;}
+  .settings-tabs button.active{border-color:var(--accent);font-weight:700;}
+  .settings-pane{display:none;}
+  .settings-pane.active{display:block;}
+
+  /* Floating AI assistant popup */
+  #ai-toggle{
+    position:absolute;right:22px;bottom:64px;width:50px;height:50px;
+    border-radius:8px;background:var(--panel);border:1px solid var(--border);color:var(--fg);
+    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
+    cursor:pointer;box-shadow:0 8px 20px rgba(0,0,0,.3);z-index:10000;
+    transition:transform .15s;
+  }
+  #ai-toggle:hover{transform:scale(1.06);border-color:var(--accent);}
+  .ai-popup{
+    position:absolute;width:380px;height:460px;right:22px;bottom:128px;
+    background:var(--panel);border:1px solid var(--border);border-radius:8px;
+    box-shadow:0 14px 34px rgba(0,0,0,.4);display:flex;flex-direction:column;
+    overflow:hidden;z-index:10001;min-width:300px;min-height:260px;
+    resize:both;
+  }
+  .ai-popup-header{
+    background:var(--panel2);padding:8px 10px;display:flex;
+    align-items:center;justify-content:space-between;cursor:move;
+    font-size:13px;font-weight:600;flex-shrink:0;border-bottom:1px solid var(--border);
+  }
+  .ai-popup-header .title{display:flex;align-items:center;gap:6px;}
+  .ai-popup-header .win-controls span{
+    width:14px;height:14px;border-radius:3px;display:inline-flex;border:1px solid var(--border);
+    align-items:center;justify-content:center;cursor:pointer;font-size:10px;color:var(--muted);
+  }
+  .ai-popup-header .win-controls span:hover{border-color:var(--accent);color:var(--fg);}
+  .ai-popup-body{flex:1;overflow:hidden;padding:10px;display:flex;}
+  .ai-popup-body .chat{width:100%;}
+</style>
+</head>
+<body>
+<div id="desktop">
+  <div id="icons">
+    <div class="icon" data-app="files"><span class="glyph">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M3 6.5a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1V18a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6.5Z"/></svg>
+    </span><span class="label">Files</span></div>
+
+    <div class="icon" data-app="editor"><span class="glyph">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M6 3h9l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v4h4M8 12h8M8 15.5h8M8 8.5h4" stroke-linecap="round"/></svg>
+    </span><span class="label">Text Editor</span></div>
+
+    <div class="icon" data-app="terminal"><span class="glyph">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M7 10l3 2.5L7 15M12 15h5" stroke-linecap="round"/></svg>
+    </span><span class="label">Terminal</span></div>
+
+    <div class="icon" data-app="docs"><span class="glyph">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M6 3h9l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v4h4M8 12h8M8 15.5h8M8 8.5h6" stroke-linecap="round"/></svg>
+    </span><span class="label">Docs</span></div>
+
+    <div class="icon" data-app="sheets"><span class="glyph">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M6 3h9l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v4h4M8 11h8M8 14.5h8M8 18h8M11 11v7M14.5 11v7" stroke-linecap="round"/></svg>
+    </span><span class="label">Sheets</span></div>
+
+    <div class="icon" data-app="slides"><span class="glyph">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="3" y="5" width="18" height="12" rx="1.5"/><path d="M9 21h6M12 17v4M7 9.5l3 2.5-3 2.5M12 13.5h4" stroke-linecap="round"/></svg>
+    </span><span class="label">Slides</span></div>
+
+    <div class="icon" data-app="gmail"><span class="glyph">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M4 6.5 12 13l8-6.5" stroke-linecap="round"/></svg>
+    </span><span class="label">Gmail</span></div>
+
+    <div class="icon" data-app="chat"><span class="glyph">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M4 5h16v10H10l-4 4v-4H4V5Z"/><path d="M8 9h8M8 12h5" stroke-linecap="round"/></svg>
+    </span><span class="label">Chat</span></div>
+
+    <div class="icon" data-app="photos"><span class="glyph">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1.5"/><circle cx="9" cy="9.5" r="1.75"/><path d="M3 17l5.5-5.5L13 16l3-3 5 5" stroke-linecap="round"/></svg>
+    </span><span class="label">Photos</span></div>
+
+    <div class="icon" data-app="drive"><span class="glyph">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M8.5 3h7L21 11h-7L8.5 3Z"/><path d="M5 17l3.5-6h7L19 17l-2 4H7l-2-4Z" stroke-linejoin="round"/></svg>
+    </span><span class="label">Drive</span></div>
+
+    <div class="icon" data-app="settings"><span class="glyph">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8" stroke-linecap="round"/></svg>
+    </span><span class="label">Settings</span></div>
+
+    <div class="icon" data-app="browser"><span class="glyph">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 3.5 6 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-6-3.5-9s1-6.5 3.5-9Z"/></svg>
+    </span><span class="label">Browser</span></div>
+  </div>
+
+  <div id="taskbar">
+    <div id="tb-items" style="display:flex;gap:8px;"></div>
+    <div id="searchWrap">
+      <div id="searchResults"></div>
+      <input id="searchBar" type="text" placeholder="Search this PC...">
+    </div>
+    <div id="clock"></div>
+  </div>
+
+  <!-- Floating AI assistant popup -->
+  <div id="ai-popup" class="ai-popup" style="display:none;">
+    <div class="ai-popup-header">
+      <div class="title"><span>AI</span><span>Assistant</span></div>
+      <div class="win-controls">
+        <span class="ai-clear" title="Clear memory">⟲</span>
+        <span class="close" title="Close">×</span>
+      </div>
+    </div>
+    <div class="ai-popup-body">
+      <div class="chat">
+        <div class="chat-log"></div>
+        <div class="chat-input">
+          <textarea class="grow" placeholder="Ask me anything, or tell me to do something on the system..."></textarea>
+          <button id="aiSendBtn">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toggle button for the AI assistant popup -->
+  <div id="ai-toggle" title="AI Assistant">AI</div>
+</div>
+
+<script>
+/* =========================================================
+   AI-OS  —  a tiny simulated desktop OS in one HTML file.
+   An AI assistant (using the user's own OpenAI API key) can
+   drive the OS via function-calling: list/read/write files,
+   open apps, run terminal commands, etc.
+========================================================= */
+
+/* ---------------- Virtual File System ---------------- */
+const FS_KEY = 'aios_fs_v1';
+
+function defaultFS(){
+  return {
+    type:'folder', name:'/', children:{
+      'README.txt': {type:'file', name:'README.txt', content:
+        'Welcome to AI-OS!\n\n'+
+        'This is a tiny simulated operating system running entirely in your browser.\n'+
+        'Open "Settings" to add your OpenAI API key, then open the "AI Assistant"\n'+
+        'app and ask it to do things — it can browse files, write notes, run\n'+
+        'terminal commands, and open other apps for you.\n'},
+      'notes': {type:'folder', name:'notes', children:{
+        'todo.txt': {type:'file', name:'todo.txt', content:'- Try asking the AI assistant to create a file\n- Ask it to list the filesystem\n'}
+      }}
+    }
+  };
+}
+
+function loadFS(){
+  try{
+    const raw = localStorage.getItem(FS_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  const fs = defaultFS();
+  saveFS(fs);
+  return fs;
+}
+function saveFS(fs){ localStorage.setItem(FS_KEY, JSON.stringify(fs)); }
+
+let FS = loadFS();
+
+/* ---------------- Theme ---------------- */
+const THEME_KEY = 'aios_theme';
+function getTheme(){ return localStorage.getItem(THEME_KEY) || 'dark'; }
+function applyTheme(theme){
+  document.documentElement.classList.toggle('light', theme==='light');
+  localStorage.setItem(THEME_KEY, theme);
+}
+applyTheme(getTheme());
+
+/* ---------------- Wallpaper ---------------- */
+const WALLPAPER_KEY = 'aios_wallpaper';
+function getWallpaper(){ return localStorage.getItem(WALLPAPER_KEY) || ''; }
+function applyWallpaper(dataUrl){
+  const desktop = document.getElementById('desktop');
+  if(dataUrl){
+    desktop.style.backgroundImage = `url("${dataUrl}")`;
+    desktop.style.backgroundSize = 'cover';
+    desktop.style.backgroundPosition = 'center';
+    desktop.style.backgroundRepeat = 'no-repeat';
+  } else {
+    desktop.style.backgroundImage = '';
+    desktop.style.backgroundSize = '';
+    desktop.style.backgroundPosition = '';
+    desktop.style.backgroundRepeat = '';
+  }
+  try{
+    if(dataUrl) localStorage.setItem(WALLPAPER_KEY, dataUrl);
+    else localStorage.removeItem(WALLPAPER_KEY);
+  }catch(e){
+    alert('Could not save background image (it may be too large for browser storage). Try a smaller image.');
+  }
+}
+applyWallpaper(getWallpaper());
+
+/* ---------------- Google Workspace (OAuth2) ---------------- */
+const GOOGLE_CLIENT_ID_KEY = 'aios_google_client_id';
+const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/gmail.readonly';
+let googleAccessToken = null;
+let googleTokenClient = null;
+
+function getGoogleClientId(){ return localStorage.getItem(GOOGLE_CLIENT_ID_KEY) || ''; }
+
+function initGoogleAuth(){
+  const clientId = getGoogleClientId();
+  if(!clientId || !window.google || !window.google.accounts || !window.google.accounts.oauth2) return false;
+  googleTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: GOOGLE_SCOPES,
+    callback: (resp)=>{
+      if(resp && resp.access_token){
+        googleAccessToken = resp.access_token;
+        updateGoogleStatus();
+      }
+    }
+  });
+  return true;
+}
+function googleSignIn(){
+  if(!googleTokenClient && !initGoogleAuth()){
+    alert('Add your Google OAuth Client ID in Settings → Google Account first.');
+    return;
+  }
+  googleTokenClient.requestAccessToken();
+}
+function googleSignOut(){
+  if(googleAccessToken && window.google && google.accounts.oauth2.revoke){
+    google.accounts.oauth2.revoke(googleAccessToken, ()=>{});
+  }
+  googleAccessToken = null;
+  updateGoogleStatus();
+}
+function updateGoogleStatus(){
+  const el = document.getElementById('googleStatus');
+  if(el) el.textContent = googleAccessToken ? 'Signed in ✓' : 'Not signed in';
+}
+
+// Google Workspace apps open inside the OS's own Browser app, maximized,
+// so they look like native full-screen apps even though it's really a browser tab.
+const GOOGLE_APP_URLS = {
+  docs:'https://docs.google.com/document/u/0/',
+  sheets:'https://docs.google.com/spreadsheets/u/0/',
+  slides:'https://docs.google.com/presentation/u/0/',
+  gmail:'https://mail.google.com/mail/u/0/',
+  chat:'https://mail.google.com/chat/u/0/',
+  photos:'https://photos.google.com/',
+  drive:'https://drive.google.com/drive/u/0/my-drive'
+};
+const GOOGLE_APP_TITLES = {
+  docs:'Docs', sheets:'Sheets', slides:'Slides', gmail:'Gmail',
+  chat:'Chat', photos:'Photos', drive:'Drive'
+};
+function openGoogleApp(app){
+  const url = GOOGLE_APP_URLS[app];
+  if(!url) return {error:'Unknown Google app: '+app};
+  const winId = openBrowser(url, {
+    maximize: true,
+    appKey: app,
+    title: GOOGLE_APP_TITLES[app] || app,
+    glyph: ''
+  });
+  return {ok:true, opened:app, url, windowId:winId};
+}
+
+// Search the user's Google Drive (requires sign-in via Settings)
+async function searchDrive(query){
+  if(!googleAccessToken) return {error:'Not signed in to Google. Open Settings → Google Account to sign in.'};
+  const url = 'https://www.googleapis.com/drive/v3/files?'+
+    new URLSearchParams({q:`name contains '${query.replace(/'/g,"\\'")}'`, pageSize:'10', fields:'files(id,name,mimeType,webViewLink)'});
+  const resp = await fetch(url, {headers:{Authorization:'Bearer '+googleAccessToken}});
+  if(!resp.ok) return {error:'Drive API error '+resp.status};
+  const data = await resp.json();
+  return {files: data.files||[]};
+}
+
+function normalizePath(path){
+  if(!path || path==='.') path='/';
+  if(!path.startsWith('/')) path = '/'+path;
+  const parts = path.split('/').filter(p=>p.length && p!=='.');
+  const out = [];
+  for(const p of parts){
+    if(p==='..') out.pop();
+    else out.push(p);
+  }
+  return '/'+out.join('/');
+}
+
+function getNode(path){
+  path = normalizePath(path);
+  if(path==='/') return FS;
+  const parts = path.split('/').filter(Boolean);
+  let node = FS;
+  for(const p of parts){
+    if(node.type!=='folder' || !node.children || !node.children[p]) return null;
+    node = node.children[p];
+  }
+  return node;
+}
+
+function getParent(path){
+  path = normalizePath(path);
+  const parts = path.split('/').filter(Boolean);
+  const name = parts.pop();
+  const parentPath = '/'+parts.join('/');
+  return {parent:getNode(parentPath), name, parentPath};
+}
+
+const FSAPI = {
+  list(path){
+    const node = getNode(path);
+    if(!node) return {error:`No such path: ${path}`};
+    if(node.type!=='folder') return {error:`${path} is not a folder`};
+    return {path:normalizePath(path), entries: Object.values(node.children||{}).map(c=>({
+      name:c.name, type:c.type, size: c.type==='file' ? (c.content||'').length : undefined
+    }))};
+  },
+  read(path){
+    const node = getNode(path);
+    if(!node) return {error:`No such file: ${path}`};
+    if(node.type!=='file') return {error:`${path} is a folder`};
+    return {path:normalizePath(path), content:node.content||''};
+  },
+  write(path, content, append){
+    const {parent, name} = getParent(path);
+    if(!parent || parent.type!=='folder') return {error:`Parent folder does not exist for ${path}`};
+    if(!parent.children) parent.children = {};
+    let existing = parent.children[name];
+    if(existing && existing.type==='folder') return {error:`${path} is a folder`};
+    const newContent = append && existing ? (existing.content||'')+content : content;
+    parent.children[name] = {type:'file', name, content:newContent};
+    saveFS(FS);
+    return {ok:true, path:normalizePath(path), bytes:newContent.length};
+  },
+  mkdir(path){
+    const {parent, name} = getParent(path);
+    if(!parent || parent.type!=='folder') return {error:`Parent folder does not exist for ${path}`};
+    if(!parent.children) parent.children = {};
+    if(parent.children[name]) return {error:`${path} already exists`};
+    parent.children[name] = {type:'folder', name, children:{}};
+    saveFS(FS);
+    return {ok:true, path:normalizePath(path)};
+  },
+  delete(path){
+    if(normalizePath(path)==='/') return {error:'Cannot delete root'};
+    const {parent, name} = getParent(path);
+    if(!parent || !parent.children || !parent.children[name]) return {error:`No such path: ${path}`};
+    delete parent.children[name];
+    saveFS(FS);
+    return {ok:true, path:normalizePath(path)};
+  }
+};
+
+/* ---------------- Window Manager ---------------- */
+const WM = {
+  windows:{}, zTop:10, nextId:1,
+  open(appKey, title, glyph, render, opts={}){
+    const id = 'win'+(this.nextId++);
+    const el = document.createElement('div');
+    el.className='window active';
+    el.style.left=(opts.x ?? (40+Object.keys(this.windows).length*30))+'px';
+    el.style.top=(opts.y ?? (40+Object.keys(this.windows).length*30))+'px';
+    el.style.width=(opts.w ?? 480)+'px';
+    el.style.height=(opts.h ?? 360)+'px';
+    el.style.zIndex=++this.zTop;
+    el.innerHTML = `
+      <div class="win-header">
+        <div class="title">${glyph ? `<span>${glyph}</span>` : ''}<span>${title}</span></div>
+        <div class="win-controls">
+          <span class="min" title="Minimize">_</span>
+          <span class="max" title="Maximize">□</span>
+          <span class="close" title="Close">×</span>
+        </div>
+      </div>
+      <div class="win-body"></div>
+      <div class="win-resize"></div>
+    `;
+    document.getElementById('desktop').appendChild(el);
+    const body = el.querySelector('.win-body');
+    render(body, id);
+
+    // focus
+    el.addEventListener('mousedown', ()=>this.focus(id));
+
+    // drag
+    const header = el.querySelector('.win-header');
+    let dragging=false, startX,startY, origX,origY;
+    header.addEventListener('mousedown', e=>{
+      if(e.target.tagName==='SPAN' && e.target.parentElement.className==='win-controls') return;
+      dragging=true; startX=e.clientX; startY=e.clientY;
+      origX=el.offsetLeft; origY=el.offsetTop;
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', e=>{
+      if(!dragging) return;
+      el.style.left=(origX+e.clientX-startX)+'px';
+      el.style.top=(origY+e.clientY-startY)+'px';
+    });
+    window.addEventListener('mouseup', ()=>dragging=false);
+
+    // resize
+    const resizer = el.querySelector('.win-resize');
+    let resizing=false, rStartX,rStartY, rW,rH;
+    resizer.addEventListener('mousedown', e=>{
+      resizing=true; rStartX=e.clientX; rStartY=e.clientY;
+      rW=el.offsetWidth; rH=el.offsetHeight; e.preventDefault(); e.stopPropagation();
+    });
+    window.addEventListener('mousemove', e=>{
+      if(!resizing) return;
+      el.style.width=Math.max(280, rW+e.clientX-rStartX)+'px';
+      el.style.height=Math.max(160, rH+e.clientY-rStartY)+'px';
+    });
+    window.addEventListener('mouseup', ()=>resizing=false);
+
+    // controls
+    el.querySelector('.close').addEventListener('click', ()=>this.close(id));
+    el.querySelector('.min').addEventListener('click', ()=>{
+      el.style.display='none'; this.renderTaskbar();
+    });
+    let maximized=false, prevRect=null;
+    el.querySelector('.max').addEventListener('click', ()=>{
+      if(!maximized){
+        prevRect={left:el.style.left,top:el.style.top,width:el.style.width,height:el.style.height};
+        el.style.left='0px'; el.style.top='0px';
+        el.style.width='100%'; el.style.height='calc(100% - 42px)';
+      } else if(prevRect){
+        Object.assign(el.style, prevRect);
+      }
+      maximized=!maximized;
+    });
+
+    this.windows[id]={el, title, appKey, glyph};
+    this.focus(id);
+    this.renderTaskbar();
+    if(opts.maximize) el.querySelector('.max').click();
+    return id;
+  },
+  focus(id){
+    Object.values(this.windows).forEach(w=>w.el.classList.remove('active'));
+    const w = this.windows[id];
+    if(!w) return;
+    w.el.classList.add('active');
+    w.el.style.display='';
+    w.el.style.zIndex=++this.zTop;
+    this.renderTaskbar(id);
+  },
+  close(id){
+    const w = this.windows[id];
+    if(!w) return;
+    w.el.remove();
+    delete this.windows[id];
+    this.renderTaskbar();
+  },
+  renderTaskbar(activeId){
+    const cont = document.getElementById('tb-items');
+    cont.innerHTML='';
+    Object.entries(this.windows).forEach(([id,w])=>{
+      const btn = document.createElement('div');
+      btn.className='tb-item'+(id===activeId?' active':'');
+      btn.textContent = w.glyph+' '+w.title;
+      btn.addEventListener('click', ()=>{
+        if(w.el.style.display==='none'){ w.el.style.display=''; this.focus(id); }
+        else this.focus(id);
+      });
+      cont.appendChild(btn);
+    });
+  },
+  listOpen(){
+    return Object.entries(this.windows).map(([id,w])=>({id, title:w.title, app:w.appKey}));
+  }
+};
+
+/* ---------------- Apps ---------------- */
+
+// ---- File Explorer ----
+function openFileExplorer(startPath='/'){
+  let path = startPath;
+  WM.open('files','File Explorer','🗂️', (body, winId)=>{
+    function render(){
+      const res = FSAPI.list(path);
+      if(res.error){ path='/'; render(); return; }
+      body.innerHTML = `
+        <div class="fe-path">📍 ${res.path}</div>
+        <div class="row">
+          <button data-act="up">⬆ Up</button>
+          <button data-act="new-file">＋ File</button>
+          <button data-act="new-folder">＋ Folder</button>
+          <button data-act="refresh">⟳</button>
+        </div>
+        <ul class="fe-list"></ul>
+      `;
+      const ul = body.querySelector('.fe-list');
+      res.entries.sort((a,b)=> (a.type===b.type)? a.name.localeCompare(b.name) : (a.type==='folder'?-1:1));
+      res.entries.forEach(e=>{
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${e.type==='folder'?'📁':'📄'}</span><span>${e.name}</span>` +
+          (e.type==='file' ? `<span style="opacity:.5;margin-left:auto;font-size:11px;">${e.size}B</span>` : '');
+        li.addEventListener('dblclick', ()=>{
+          const newPath = (path==='/'?'':path)+'/'+e.name;
+          if(e.type==='folder'){ path=normalizePath(newPath); render(); }
+          else openTextEditor(normalizePath(newPath));
+        });
+        ul.appendChild(li);
+      });
+      body.querySelector('[data-act="up"]').addEventListener('click', ()=>{
+        const parts=path.split('/').filter(Boolean); parts.pop();
+        path='/'+parts.join('/'); render();
+      });
+      body.querySelector('[data-act="refresh"]').addEventListener('click', render);
+      body.querySelector('[data-act="new-file"]').addEventListener('click', ()=>{
+        const name = prompt('New file name:'); if(!name) return;
+        FSAPI.write(normalizePath(path+'/'+name), ''); render();
+      });
+      body.querySelector('[data-act="new-folder"]').addEventListener('click', ()=>{
+        const name = prompt('New folder name:'); if(!name) return;
+        FSAPI.mkdir(normalizePath(path+'/'+name)); render();
+      });
+    }
+    render();
+  }, {w:420,h:380});
+}
+
+// ---- Text Editor ----
+function openTextEditor(filePath){
+  WM.open('editor', filePath ? filePath.split('/').pop() : 'Untitled', '📝', (body, winId)=>{
+    let path = filePath || null;
+    body.innerHTML = `
+      <div class="row">
+        <input class="grow" type="text" placeholder="/path/to/file.txt" value="${path||''}">
+        <button data-act="save">💾 Save</button>
+        <button data-act="load">📂 Load</button>
+      </div>
+      <textarea style="height:calc(100% - 40px)"></textarea>
+    `;
+    const pathInput = body.querySelector('input');
+    const ta = body.querySelector('textarea');
+    if(path){
+      const res = FSAPI.read(path);
+      ta.value = res.error ? '' : res.content;
+    }
+    body.querySelector('[data-act="load"]').addEventListener('click', ()=>{
+      const res = FSAPI.read(pathInput.value);
+      if(res.error) alert(res.error); else ta.value = res.content;
+    });
+    body.querySelector('[data-act="save"]').addEventListener('click', ()=>{
+      const res = FSAPI.write(pathInput.value, ta.value);
+      if(res.error) alert(res.error); else alert('Saved '+res.path);
+    });
+  }, {w:480,h:380});
+}
+
+// ---- Terminal ----
+function openTerminal(){
+  WM.open('terminal','Terminal','💻', (body, winId)=>{
+    let cwd='/';
+    body.innerHTML = `<div class="terminal"><div class="lines"></div>
+      <div class="line">${cwd} $ <input autofocus></div></div>`;
+    const term = body.querySelector('.terminal');
+    const lines = body.querySelector('.lines');
+    let input = body.querySelector('input');
+
+    function printLine(text){
+      const d = document.createElement('div');
+      d.className='line'; d.textContent=text;
+      lines.appendChild(d);
+      term.scrollTop = term.scrollHeight;
+    }
+    function newPrompt(){
+      const promptLine = document.createElement('div');
+      promptLine.className='line';
+      promptLine.innerHTML = `${cwd} $ <input autofocus>`;
+      lines.appendChild(promptLine);
+      input = promptLine.querySelector('input');
+      input.addEventListener('keydown', onKey);
+      input.focus();
+      term.scrollTop = term.scrollHeight;
+    }
+    function onKey(e){
+      if(e.key==='Enter'){
+        const cmd = input.value;
+        runCommand(cmd);
+      }
+    }
+    function runCommand(cmdline){
+      const promptLine = input.parentElement;
+      promptLine.innerHTML = `${cwd} $ ${cmdline}`;
+      const out = TERM.run(cmdline, ()=>cwd, c=>cwd=c);
+      if(out!==undefined && out!==null && out!==''){
+        out.split('\n').forEach(l=>printLine(l));
+      }
+      newPrompt();
+    }
+    // initial header
+    printLine('AI-OS Terminal — type "help" for commands.');
+    input.addEventListener('keydown', onKey);
+    body.querySelector('.terminal').addEventListener('click', ()=>input.focus());
+  }, {w:520,h:340});
+}
+
+// shared terminal command implementation (used by Terminal app and AI tool)
+const TERM = {
+  run(cmdline, getCwd, setCwd){
+    const cwd = getCwd ? getCwd() : '/';
+    const parts = cmdline.trim().split(/\s+/);
+    const cmd = parts[0];
+    const args = parts.slice(1);
+    const resolve = p => p ? normalizePath(p.startsWith('/')?p:cwd+'/'+p) : cwd;
+
+    switch(cmd){
+      case '': return '';
+      case 'help':
+        return 'Commands: pwd, ls [path], cd <path>, cat <file>, echo <text> > <file>,\n'+
+               'mkdir <path>, rm <path>, touch <file>, clear';
+      case 'pwd': return cwd;
+      case 'ls': {
+        const res = FSAPI.list(resolve(args[0]));
+        if(res.error) return res.error;
+        return res.entries.map(e=>e.type==='folder'? e.name+'/' : e.name).join('\n') || '(empty)';
+      }
+      case 'cd': {
+        const target = resolve(args[0]||'/');
+        const node = getNode(target);
+        if(!node) return `cd: no such directory: ${args[0]}`;
+        if(node.type!=='folder') return `cd: not a directory: ${args[0]}`;
+        if(setCwd) setCwd(target);
+        return '';
+      }
+      case 'cat': {
+        const res = FSAPI.read(resolve(args[0]));
+        return res.error || res.content;
+      }
+      case 'touch': {
+        const p = resolve(args[0]);
+        if(!getNode(p)) FSAPI.write(p,'');
+        return '';
+      }
+      case 'mkdir': {
+        const res = FSAPI.mkdir(resolve(args[0]));
+        return res.error || '';
+      }
+      case 'rm': {
+        const res = FSAPI.delete(resolve(args[0]));
+        return res.error || '';
+      }
+      case 'echo': {
+        const joined = args.join(' ');
+        const gtIdx = joined.lastIndexOf('>');
+        if(gtIdx>=0){
+          const text = joined.slice(0,gtIdx).trim();
+          const file = joined.slice(gtIdx+1).trim();
+          FSAPI.write(resolve(file), text+'\n');
+          return '';
+        }
+        return joined;
+      }
+      case 'clear': return ' CLEAR ';
+      default: return `Unknown command: ${cmd} (try "help")`;
+    }
+  }
+};
+
+// ---- Settings ----
+function openSettings(){
+  WM.open('settings','Settings','St', (body)=>{
+    const key = localStorage.getItem('aios_openai_key')||'';
+    const model = localStorage.getItem('aios_model')||'gpt-4o-mini';
+    const claudeKey = localStorage.getItem('aios_claude_key')||'';
+    const claudeModel = localStorage.getItem('aios_claude_model')||'claude-sonnet-4-6';
+    const provider = localStorage.getItem('aios_provider')||'openai';
+    const clientId = getGoogleClientId();
+    const theme = getTheme();
+
+    body.innerHTML = `
+      <div class="settings-tabs">
+        <button data-tab="ai" class="active">AI</button>
+        <button data-tab="appearance">Appearance</button>
+        <button data-tab="google">Google Account</button>
+        <button data-tab="system">System</button>
+      </div>
+
+      <div class="settings-pane active" data-pane="ai">
+        <div class="settings-section">
+          <h3>AI Provider</h3>
+          <p class="hint">Choose which AI service powers the AI Assistant.</p>
+          <div class="row">
+            <label><input type="radio" name="aiProvider" id="providerOpenAI" value="openai"> OpenAI</label>
+            <label><input type="radio" name="aiProvider" id="providerClaude" value="claude"> Claude (Anthropic)</label>
+          </div>
+        </div>
+        <div class="settings-section">
+          <h3>OpenAI API Key</h3>
+          <p class="hint">Stored only in this browser's localStorage. Used so the AI Assistant
+          can call the OpenAI API directly from your browser.</p>
+          <div class="row"><input class="grow" type="password" id="apiKey" placeholder="sk-..." value="${key}"></div>
+          <div class="row">
+            <label for="modelSel">Model:</label>
+            <select id="modelSel">
+              <option value="gpt-4o-mini">gpt-4o-mini</option>
+              <option value="gpt-4o">gpt-4o</option>
+              <option value="gpt-4.1">gpt-4.1</option>
+              <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+            </select>
+          </div>
+        </div>
+        <div class="settings-section">
+          <h3>Claude API Key</h3>
+          <p class="hint">Stored only in this browser's localStorage. Used so the AI Assistant
+          can call the Anthropic API directly from your browser.</p>
+          <div class="row"><input class="grow" type="password" id="claudeApiKey" placeholder="sk-ant-..." value="${claudeKey}"></div>
+          <div class="row">
+            <label for="claudeModelSel">Model:</label>
+            <select id="claudeModelSel">
+              <option value="claude-sonnet-4-6">claude-sonnet-4-6</option>
+              <option value="claude-opus-4-8">claude-opus-4-8</option>
+              <option value="claude-haiku-4-5-20251001">claude-haiku-4-5</option>
+            </select>
+          </div>
+        </div>
+        <div class="settings-section">
+          <div class="row"><button id="saveKey">Save</button> <span id="savedMsg" class="hint"></span></div>
+        </div>
+      </div>
+
+      <div class="settings-pane" data-pane="appearance">
+        <div class="settings-section">
+          <h3>Theme</h3>
+          <p class="hint">AI-OS is minimalist black-on-white or white-on-black. Pick one.</p>
+          <div class="row">
+            <button id="themeDark">Dark</button>
+            <button id="themeLight">Light</button>
+          </div>
+        </div>
+        <div class="settings-section">
+          <h3>Background</h3>
+          <p class="hint">Upload a picture to use as your desktop background.</p>
+          <div class="row">
+            <input type="file" id="wallpaperFile" accept="image/*">
+            <button id="clearWallpaper">Remove background</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-pane" data-pane="google">
+        <div class="settings-section">
+          <h3>Google Account (OAuth2)</h3>
+          <p class="hint">Sign in with your Google account to let AI-OS open and search Google Docs, Sheets,
+          Slides, Gmail, Chat, Photos and Drive. This requires a free OAuth Client ID from Google Cloud — see
+          the instructions below.</p>
+          <div class="row"><input class="grow" type="text" id="googleClientId" placeholder="OAuth Client ID (xxxx.apps.googleusercontent.com)" value="${clientId}"></div>
+          <div class="row"><button id="saveGoogleId">Save Client ID</button> <span id="savedGoogleMsg" class="hint"></span></div>
+          <div class="row">
+            <button id="googleSignInBtn">Sign in with Google</button>
+            <button id="googleSignOutBtn">Sign out</button>
+            <span id="googleStatus" class="hint">Not signed in</span>
+          </div>
+        </div>
+        <div class="settings-section">
+          <h3>How to get a Google OAuth Client ID</h3>
+          <ol>
+            <li>Go to <strong>console.cloud.google.com</strong> and create (or select) a project.</li>
+            <li>Open <strong>APIs &amp; Services → Library</strong> and enable the
+              <strong>Google Drive API</strong> and <strong>Gmail API</strong> (enable others like
+              Docs/Sheets/Slides API if you want deeper integration later).</li>
+            <li>Go to <strong>APIs &amp; Services → OAuth consent screen</strong> and configure it
+              (External, add your email as a test user if it stays in "Testing" mode).</li>
+            <li>Go to <strong>APIs &amp; Services → Credentials → Create Credentials → OAuth client ID</strong>.</li>
+            <li>Choose application type <strong>Web application</strong>.</li>
+            <li>Under <strong>Authorized JavaScript origins</strong>, add the URL/origin this AI-OS page
+              is served from (e.g. <code>http://localhost:8080</code> or your site's origin).</li>
+            <li>Click Create, then copy the <strong>Client ID</strong> (ends in
+              <code>.apps.googleusercontent.com</code>) and paste it above.</li>
+            <li>Click "Sign in with Google" — a Google popup will ask you to grant access.</li>
+          </ol>
+          <p class="hint">The Client ID and access token are stored only in this browser. AI-OS never
+          sends your Google credentials anywhere except directly to Google's servers.</p>
+        </div>
+      </div>
+
+      <div class="settings-pane" data-pane="system">
+        <div class="settings-section">
+          <h3>Filesystem</h3>
+          <div class="row"><button id="resetFs">Reset virtual filesystem</button></div>
+        </div>
+      </div>
+    `;
+
+    // tabs
+    body.querySelectorAll('.settings-tabs button').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        body.querySelectorAll('.settings-tabs button').forEach(b=>b.classList.remove('active'));
+        body.querySelectorAll('.settings-pane').forEach(p=>p.classList.remove('active'));
+        btn.classList.add('active');
+        body.querySelector(`.settings-pane[data-pane="${btn.dataset.tab}"]`).classList.add('active');
+      });
+    });
+
+    // AI tab
+    body.querySelector('#modelSel').value = model;
+    body.querySelector('#claudeModelSel').value = claudeModel;
+    body.querySelector(provider==='claude' ? '#providerClaude' : '#providerOpenAI').checked = true;
+    body.querySelector('#saveKey').addEventListener('click', ()=>{
+      localStorage.setItem('aios_openai_key', body.querySelector('#apiKey').value.trim());
+      localStorage.setItem('aios_model', body.querySelector('#modelSel').value);
+      localStorage.setItem('aios_claude_key', body.querySelector('#claudeApiKey').value.trim());
+      localStorage.setItem('aios_claude_model', body.querySelector('#claudeModelSel').value);
+      const checked = body.querySelector('input[name="aiProvider"]:checked');
+      localStorage.setItem('aios_provider', checked ? checked.value : 'openai');
+      body.querySelector('#savedMsg').textContent = 'Saved!';
+      setTimeout(()=>body.querySelector('#savedMsg').textContent='',1500);
+    });
+
+    // Appearance tab
+    function refreshThemeBtns(){
+      const t = getTheme();
+      body.querySelector('#themeDark').classList.toggle('active', t==='dark');
+      body.querySelector('#themeLight').classList.toggle('active', t==='light');
+    }
+    body.querySelector('#themeDark').addEventListener('click', ()=>{ applyTheme('dark'); refreshThemeBtns(); });
+    body.querySelector('#themeLight').addEventListener('click', ()=>{ applyTheme('light'); refreshThemeBtns(); });
+    refreshThemeBtns();
+
+    body.querySelector('#wallpaperFile').addEventListener('change', (e)=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      if(!file.type.startsWith('image/')){ alert('Please select an image file.'); return; }
+      if(file.size > 3*1024*1024){ alert('Image is too large. Please choose one under 3MB.'); return; }
+      const reader = new FileReader();
+      reader.onload = ()=>applyWallpaper(reader.result);
+      reader.onerror = ()=>alert('Failed to read image file.');
+      reader.readAsDataURL(file);
+    });
+    body.querySelector('#clearWallpaper').addEventListener('click', ()=>{
+      applyWallpaper('');
+      body.querySelector('#wallpaperFile').value = '';
+    });
+
+    // Google tab
+    body.querySelector('#saveGoogleId').addEventListener('click', ()=>{
+      localStorage.setItem(GOOGLE_CLIENT_ID_KEY, body.querySelector('#googleClientId').value.trim());
+      googleTokenClient = null; // force re-init with new client id
+      initGoogleAuth();
+      body.querySelector('#savedGoogleMsg').textContent = 'Saved!';
+      setTimeout(()=>body.querySelector('#savedGoogleMsg').textContent='',1500);
+    });
+    body.querySelector('#googleSignInBtn').addEventListener('click', googleSignIn);
+    body.querySelector('#googleSignOutBtn').addEventListener('click', googleSignOut);
+    updateGoogleStatus();
+
+    // System tab
+    body.querySelector('#resetFs').addEventListener('click', ()=>{
+      if(confirm('Reset the virtual filesystem to defaults? This cannot be undone.')){
+        FS = defaultFS(); saveFS(FS); alert('Filesystem reset.');
+      }
+    });
+  }, {w:480,h:440});
+}
+
+// ---- Browser ----
+function openBrowser(query, opts={}){
+  let winId;
+  winId = WM.open(opts.appKey || 'browser', opts.title || 'Browser', opts.glyph ?? '', (body)=>{
+    body.innerHTML = `
+      <div class="row">
+        <button data-act="back">←</button>
+        <button data-act="fwd">→</button>
+        <button data-act="reload">⟲</button>
+        <input class="grow" type="text" id="addr" placeholder="Search Google or enter a URL">
+        <button data-act="go">Go</button>
+        <button data-act="external" title="Open this page in a real browser tab">↗</button>
+      </div>
+      <iframe id="browserFrame" style="width:100%;height:calc(100% - 40px);border:1px solid var(--border);background:#fff;"></iframe>
+    `;
+    const addr = body.querySelector('#addr');
+    const frame = body.querySelector('#browserFrame');
+
+    function navigate(input){
+      let url = (input||'').trim();
+      if(!url){ url = 'https://www.google.com/'; }
+      else if(/^https?:\/\//i.test(url)){ /* already a url */ }
+      else if(/^[\w-]+(\.[\w-]+)+(\/.*)?$/.test(url)){ url = 'https://'+url; }
+      else url = 'https://www.google.com/search?igu=1&q='+encodeURIComponent(url);
+      addr.value = url;
+      frame.src = url;
+    }
+
+    body.querySelector('[data-act="go"]').addEventListener('click', ()=>navigate(addr.value));
+    addr.addEventListener('keydown', e=>{ if(e.key==='Enter') navigate(addr.value); });
+    body.querySelector('[data-act="reload"]').addEventListener('click', ()=>{
+      try{ frame.contentWindow.location.reload(); }catch(e){ frame.src = frame.src; }
+    });
+    body.querySelector('[data-act="back"]').addEventListener('click', ()=>{
+      try{ frame.contentWindow.history.back(); }catch(e){}
+    });
+    body.querySelector('[data-act="fwd"]').addEventListener('click', ()=>{
+      try{ frame.contentWindow.history.forward(); }catch(e){}
+    });
+    body.querySelector('[data-act="external"]').addEventListener('click', ()=>{
+      window.open(addr.value || frame.src, '_blank');
+    });
+
+    navigate(query || 'https://www.google.com/');
+  }, {w:640, h:460, maximize: !!opts.maximize});
+  return winId;
+}
+
+/* ---------------- AI Assistant ---------------- */
+
+// Tool definitions exposed to the model
+const AI_TOOLS = [
+  {type:'function', function:{name:'list_files', description:'List files/folders at a given path in the virtual filesystem.',
+    parameters:{type:'object', properties:{path:{type:'string', description:'Path to list, e.g. "/" or "/notes"'}}, required:['path']}}},
+  {type:'function', function:{name:'read_file', description:'Read the contents of a text file.',
+    parameters:{type:'object', properties:{path:{type:'string'}}, required:['path']}}},
+  {type:'function', function:{name:'write_file', description:'Write (overwrite) or append text to a file, creating it if needed.',
+    parameters:{type:'object', properties:{path:{type:'string'}, content:{type:'string'}, append:{type:'boolean', description:'If true, append instead of overwrite'}}, required:['path','content']}}},
+  {type:'function', function:{name:'make_dir', description:'Create a folder.',
+    parameters:{type:'object', properties:{path:{type:'string'}}, required:['path']}}},
+  {type:'function', function:{name:'delete_path', description:'Delete a file or folder.',
+    parameters:{type:'object', properties:{path:{type:'string'}}, required:['path']}}},
+  {type:'function', function:{name:'run_terminal_command', description:'Run a shell-like command (ls, cat, echo, mkdir, rm, pwd, cd, touch) in the virtual OS terminal.',
+    parameters:{type:'object', properties:{command:{type:'string'}}, required:['command']}}},
+  {type:'function', function:{name:'open_app', description:'Open an application window or Google Workspace app.',
+    parameters:{type:'object', properties:{
+      app:{type:'string', enum:['files','editor','terminal','settings','browser','docs','sheets','slides','gmail','chat','photos','drive'], description:'Which app to open. Google Workspace apps (docs, sheets, slides, gmail, chat, photos, drive) open in a new browser tab. "browser" opens the in-OS web browser.'},
+      path:{type:'string', description:'Optional path argument (folder for files app, file for editor, or a URL/search query for the browser app)'}
+    }, required:['app']}}},
+  {type:'function', function:{name:'list_open_windows', description:'List currently open application windows on the desktop.',
+    parameters:{type:'object', properties:{}}}},
+  {type:'function', function:{name:'search_drive', description:'Search the user\'s Google Drive by filename (requires Google sign-in in Settings).',
+    parameters:{type:'object', properties:{query:{type:'string'}}, required:['query']}}},
+];
+
+// Convert OpenAI-style tool defs to Anthropic's tool format
+function toAnthropicTools(tools){
+  return tools.map(t=>({
+    name: t.function.name,
+    description: t.function.description,
+    input_schema: t.function.parameters
+  }));
+}
+
+// Convert canonical OpenAI-shaped message history to Anthropic's {system, messages} shape
+function toAnthropicMessages(messages){
+  let system = '';
+  const out = [];
+  for(const m of messages){
+    let role, content;
+    if(m.role === 'system'){
+      system = (system ? system+'\n' : '') + m.content;
+      continue;
+    } else if(m.role === 'user'){
+      role = 'user'; content = m.content;
+    } else if(m.role === 'assistant'){
+      role = 'assistant';
+      content = [];
+      if(m.content) content.push({type:'text', text:m.content});
+      if(m.tool_calls) for(const tc of m.tool_calls){
+        let input={};
+        try{ input = JSON.parse(tc.function.arguments||'{}'); }catch(e){}
+        content.push({type:'tool_use', id:tc.id, name:tc.function.name, input});
+      }
+    } else if(m.role === 'tool'){
+      role = 'user';
+      content = [{type:'tool_result', tool_use_id:m.tool_call_id, content:m.content}];
+    } else {
+      continue;
+    }
+    // Anthropic requires strictly alternating roles; merge consecutive tool results
+    const last = out[out.length-1];
+    if(last && last.role === role && Array.isArray(last.content) && Array.isArray(content)){
+      last.content = last.content.concat(content);
+    } else {
+      out.push({role, content});
+    }
+  }
+  return {system, messages: out};
+}
+
+// Convert an Anthropic assistant message into the canonical OpenAI-shaped assistant message
+function fromAnthropicMessage(msg){
+  let textContent = '';
+  const tool_calls = [];
+  for(const block of (msg.content||[])){
+    if(block.type === 'text') textContent += block.text;
+    else if(block.type === 'tool_use') tool_calls.push({
+      id: block.id,
+      type: 'function',
+      function:{ name: block.name, arguments: JSON.stringify(block.input||{}) }
+    });
+  }
+  const out = {role:'assistant', content: textContent || null};
+  if(tool_calls.length) out.tool_calls = tool_calls;
+  return out;
+}
+
+let aiTermCwd = '/';
+async function executeTool(name, args){
+  try{
+    switch(name){
+      case 'list_files': return FSAPI.list(args.path);
+      case 'read_file': return FSAPI.read(args.path);
+      case 'write_file': return FSAPI.write(args.path, args.content, !!args.append);
+      case 'make_dir': return FSAPI.mkdir(args.path);
+      case 'delete_path': return FSAPI.delete(args.path);
+      case 'run_terminal_command': {
+        const out = TERM.run(args.command, ()=>aiTermCwd, c=>aiTermCwd=c);
+        return {cwd:aiTermCwd, output: out};
+      }
+      case 'open_app': {
+        if(args.app==='files') openFileExplorer(args.path||'/');
+        else if(args.app==='editor') openTextEditor(args.path||null);
+        else if(args.app==='terminal') openTerminal();
+        else if(args.app==='settings') openSettings();
+        else if(args.app==='browser') openBrowser(args.path||'');
+        else if(GOOGLE_APP_URLS[args.app]) return openGoogleApp(args.app);
+        else return {error:'Unknown app: '+args.app};
+        return {ok:true, opened:args.app};
+      }
+      case 'list_open_windows': return {windows: WM.listOpen()};
+      case 'search_drive': return await searchDrive(args.query);
+      default: return {error:'Unknown tool: '+name};
+    }
+  }catch(e){
+    return {error: String(e)};
+  }
+}
+
+const AI_MEMORY_KEY = 'aios_ai_memory_v1';
+const AI_SYSTEM_PROMPT =
+  'You are the built-in AI assistant for "AI-OS", a simulated operating system running in a browser. '+
+  'You live in a small floating chat popup that the user can drag around and toggle open/closed. '+
+  'You have persistent memory of this conversation across sessions (it is saved in the browser). '+
+  'Be a friendly, natural conversationalist — chat normally, remember context from earlier in the '+
+  'conversation, and also act: you can control the OS using the provided tools to browse and edit a '+
+  'virtual filesystem, run terminal commands, open apps, and inspect open windows. When the user asks '+
+  'you to do something on the system, use the tools rather than just describing what you would do.';
+
+function loadAIMemory(){
+  try{
+    const raw = localStorage.getItem(AI_MEMORY_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(Array.isArray(parsed) && parsed.length) return parsed;
+    }
+  }catch(e){}
+  return [{role:'system', content:AI_SYSTEM_PROMPT}];
+}
+function saveAIMemory(messages){
+  try{ localStorage.setItem(AI_MEMORY_KEY, JSON.stringify(messages)); }catch(e){}
+}
+
+function initAIAssistant(){
+  const popup = document.getElementById('ai-popup');
+  const toggle = document.getElementById('ai-toggle');
+  const header = popup.querySelector('.ai-popup-header');
+  const closeBtn = popup.querySelector('.close');
+  const clearBtn = popup.querySelector('.ai-clear');
+  const log = popup.querySelector('.chat-log');
+  const ta = popup.querySelector('textarea');
+  const sendBtn = popup.querySelector('#aiSendBtn');
+
+  let messages = loadAIMemory();
+
+  function addMsg(role, text, persist=true){
+    const div = document.createElement('div');
+    div.className='chat-msg '+role;
+    div.textContent = text;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+    return div;
+  }
+
+  function renderHistory(){
+    log.innerHTML='';
+    messages.forEach(m=>{
+      if(m.role==='system') return;
+      if(m.role==='user') addMsg('user', m.content);
+      else if(m.role==='assistant' && m.content) addMsg('assistant', m.content);
+      else if(m.role==='tool'){
+        addMsg('tool', `🔧 result → ${m.content}`);
+      }
+    });
+    if(messages.length<=1){
+      addMsg('assistant','Hi! I\'m your AI-OS assistant. I remember our conversation, can chat normally, '+
+        'and can also browse/edit files, run terminal commands, and open apps when you ask. '+
+        'Make sure your OpenAI API key is set in Settings.');
+    }
+  }
+
+  // ---- toggle open/close ----
+  function setOpen(open){
+    popup.style.display = open ? 'flex' : 'none';
+    if(open){
+      popup.style.flexDirection='column';
+      ta.focus();
+      log.scrollTop = log.scrollHeight;
+    }
+  }
+  toggle.addEventListener('click', ()=> setOpen(popup.style.display==='none' || !popup.style.display));
+  closeBtn.addEventListener('click', ()=> setOpen(false));
+
+  clearBtn.addEventListener('click', ()=>{
+    if(confirm('Clear the AI assistant\'s memory? This deletes the saved conversation.')){
+      messages = [{role:'system', content:AI_SYSTEM_PROMPT}];
+      saveAIMemory(messages);
+      renderHistory();
+    }
+  });
+
+  // ---- dragging ----
+  let dragging=false, startX,startY, origX,origY;
+  header.addEventListener('mousedown', e=>{
+    if(e.target.classList.contains('ai-clear') || e.target.classList.contains('close')) return;
+    dragging=true; startX=e.clientX; startY=e.clientY;
+    const rect = popup.getBoundingClientRect();
+    const deskRect = document.getElementById('desktop').getBoundingClientRect();
+    origX = rect.left - deskRect.left; origY = rect.top - deskRect.top;
+    // switch from right/bottom anchoring to left/top so dragging works predictably
+    popup.style.right='auto'; popup.style.bottom='auto';
+    popup.style.left=origX+'px'; popup.style.top=origY+'px';
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', e=>{
+    if(!dragging) return;
+    popup.style.left=(origX+e.clientX-startX)+'px';
+    popup.style.top=(origY+e.clientY-startY)+'px';
+  });
+  window.addEventListener('mouseup', ()=>dragging=false);
+
+  // ---- sending messages ----
+  async function send(){
+    const provider = localStorage.getItem('aios_provider')||'openai';
+    const key = provider==='claude'
+      ? localStorage.getItem('aios_claude_key')
+      : localStorage.getItem('aios_openai_key');
+    const model = provider==='claude'
+      ? (localStorage.getItem('aios_claude_model')||'claude-sonnet-4-6')
+      : (localStorage.getItem('aios_model')||'gpt-4o-mini');
+    if(!key){
+      const providerName = provider==='claude' ? 'Claude' : 'OpenAI';
+      addMsg('assistant',`⚠️ No ${providerName} API key set. Open Settings and add your API key first.`);
+      return;
+    }
+    const userText = ta.value.trim();
+    if(!userText) return;
+    addMsg('user', userText);
+    messages.push({role:'user', content:userText});
+    saveAIMemory(messages);
+    ta.value='';
+    sendBtn.disabled=true;
+    let thinking = addMsg('assistant','…thinking');
+
+    try{
+      let guard=0;
+      while(guard++ < 8){
+        let msg;
+        if(provider==='claude'){
+          const {system, messages:claudeMessages} = toAnthropicMessages(messages);
+          const resp = await fetch('https://api.anthropic.com/v1/messages', {
+            method:'POST',
+            headers:{
+              'Content-Type':'application/json',
+              'x-api-key': key,
+              'anthropic-version': '2023-06-01',
+              'anthropic-dangerous-direct-browser-access': 'true'
+            },
+            body: JSON.stringify({
+              model,
+              max_tokens: 4096,
+              system,
+              messages: claudeMessages,
+              tools: toAnthropicTools(AI_TOOLS)
+            })
+          });
+          if(!resp.ok){
+            const errBody = await resp.text();
+            thinking.remove();
+            addMsg('assistant','⚠️ API error: '+resp.status+' '+errBody.slice(0,300));
+            break;
+          }
+          const data = await resp.json();
+          msg = fromAnthropicMessage(data);
+        } else {
+          const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+            method:'POST',
+            headers:{
+              'Content-Type':'application/json',
+              'Authorization':'Bearer '+key
+            },
+            body: JSON.stringify({
+              model,
+              messages,
+              tools: AI_TOOLS,
+              tool_choice:'auto'
+            })
+          });
+          if(!resp.ok){
+            const errBody = await resp.text();
+            thinking.remove();
+            addMsg('assistant','⚠️ API error: '+resp.status+' '+errBody.slice(0,300));
+            break;
+          }
+          const data = await resp.json();
+          msg = data.choices[0].message;
+        }
+        messages.push(msg);
+
+        if(msg.tool_calls && msg.tool_calls.length){
+          thinking.remove();
+          for(const tc of msg.tool_calls){
+            let args={};
+            try{ args = JSON.parse(tc.function.arguments||'{}'); }catch(e){}
+            const result = await executeTool(tc.function.name, args);
+            addMsg('tool', `🔧 ${tc.function.name}(${JSON.stringify(args)})\n→ ${JSON.stringify(result)}`);
+            messages.push({role:'tool', tool_call_id:tc.id, content: JSON.stringify(result)});
+          }
+          saveAIMemory(messages);
+          thinking = addMsg('assistant','…thinking');
+          continue;
+        } else {
+          thinking.remove();
+          addMsg('assistant', msg.content || '(no response)');
+          saveAIMemory(messages);
+          break;
+        }
+      }
+    }catch(e){
+      thinking.remove();
+      addMsg('assistant','⚠️ Error: '+String(e));
+    }finally{
+      sendBtn.disabled=false;
+    }
+  }
+
+  sendBtn.addEventListener('click', send);
+  ta.addEventListener('keydown', e=>{
+    if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); }
+  });
+
+  renderHistory();
+}
+
+/* ---------------- Desktop icon layout + drag ---------------- */
+const ICON_POS_KEY = 'aios_icon_positions';
+function loadIconPositions(){
+  try{ return JSON.parse(localStorage.getItem(ICON_POS_KEY)) || {}; }catch(e){ return {}; }
+}
+function saveIconPositions(pos){ localStorage.setItem(ICON_POS_KEY, JSON.stringify(pos)); }
+
+function initIcons(){
+  const desktop = document.getElementById('desktop');
+  const iconsLayer = document.getElementById('icons');
+  const icons = Array.from(iconsLayer.querySelectorAll('.icon'));
+  const positions = loadIconPositions();
+
+  const cellW = 96, cellH = 96, marginTop = 16, marginLeft = 16;
+  const rows = Math.max(1, Math.floor((iconsLayer.clientHeight - marginTop) / cellH));
+
+  icons.forEach((icon, i)=>{
+    const app = icon.dataset.app;
+    let x, y;
+    if(positions[app]){
+      x = positions[app].x; y = positions[app].y;
+    } else {
+      const col = Math.floor(i / rows);
+      const row = i % rows;
+      x = marginLeft + col * cellW;
+      y = marginTop + row * cellH;
+    }
+    icon.style.left = x+'px';
+    icon.style.top = y+'px';
+
+    // single click to launch (suppressed if the click ends a drag)
+    icon.addEventListener('click', ()=>{
+      if(!icon._wasDragged) launch(app);
+    });
+
+    // drag to reposition
+    let dragging=false, moved=false, startX, startY, origX, origY;
+    icon.addEventListener('mousedown', e=>{
+      dragging=true; moved=false;
+      startX=e.clientX; startY=e.clientY;
+      origX = icon.offsetLeft; origY = icon.offsetTop;
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', e=>{
+      if(!dragging) return;
+      const dx = e.clientX-startX, dy = e.clientY-startY;
+      if(Math.abs(dx)>3 || Math.abs(dy)>3) moved=true;
+      if(!moved) return;
+      let nx = origX+dx, ny = origY+dy;
+      nx = Math.max(0, Math.min(nx, desktop.clientWidth-icon.offsetWidth));
+      ny = Math.max(0, Math.min(ny, desktop.clientHeight-46-icon.offsetHeight));
+      icon.style.left = nx+'px';
+      icon.style.top = ny+'px';
+    });
+    window.addEventListener('mouseup', ()=>{
+      if(!dragging) return;
+      dragging=false;
+      if(moved){
+        const pos = loadIconPositions();
+        pos[app] = {x: icon.offsetLeft, y: icon.offsetTop};
+        saveIconPositions(pos);
+        icon._wasDragged = true;
+        setTimeout(()=>{ icon._wasDragged = false; }, 0);
+      }
+    });
+  });
+}
+function launch(app){
+  switch(app){
+    case 'files': openFileExplorer('/'); break;
+    case 'editor': openTextEditor(); break;
+    case 'terminal': openTerminal(); break;
+    case 'settings': openSettings(); break;
+    case 'browser': openBrowser(); break;
+    default:
+      if(GOOGLE_APP_URLS[app]) openGoogleApp(app);
+  }
+}
+
+function tickClock(){
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+}
+tickClock();
+setInterval(tickClock, 1000);
+
+/* ---------------- Search bar (searches the virtual PC) ---------------- */
+const SEARCH_APPS = [
+  {name:'File Explorer', tag:'app', action:()=>openFileExplorer('/')},
+  {name:'Text Editor', tag:'app', action:()=>openTextEditor()},
+  {name:'Terminal', tag:'app', action:()=>openTerminal()},
+  {name:'Settings', tag:'app', action:()=>openSettings()},
+  {name:'Browser', tag:'app', action:()=>openBrowser()},
+  {name:'Google Docs', tag:'app', action:()=>openGoogleApp('docs')},
+  {name:'Google Sheets', tag:'app', action:()=>openGoogleApp('sheets')},
+  {name:'Google Slides', tag:'app', action:()=>openGoogleApp('slides')},
+  {name:'Gmail', tag:'app', action:()=>openGoogleApp('gmail')},
+  {name:'Google Chat', tag:'app', action:()=>openGoogleApp('chat')},
+  {name:'Google Photos', tag:'app', action:()=>openGoogleApp('photos')},
+  {name:'Google Drive', tag:'app', action:()=>openGoogleApp('drive')},
+];
+
+function searchFilesystem(query){
+  const q = query.toLowerCase();
+  const results = [];
+  function walk(node, path){
+    if(node.name && node.name.toLowerCase().includes(q)){
+      results.push({name:node.name, path, type:node.type});
+    }
+    if(node.type==='folder'){
+      Object.values(node.children||{}).forEach(c=>walk(c, path==='/' ? '/'+c.name : path+'/'+c.name));
+    }
+  }
+  Object.values(FS.children||{}).forEach(c=>walk(c, '/'+c.name));
+  return results;
+}
+
+function initSearchBar(){
+  const input = document.getElementById('searchBar');
+  const results = document.getElementById('searchResults');
+
+  function render(query){
+    results.innerHTML='';
+    if(!query.trim()){ results.classList.remove('open'); return; }
+    const q = query.toLowerCase();
+    const apps = SEARCH_APPS.filter(a=>a.name.toLowerCase().includes(q));
+    const files = searchFilesystem(query);
+
+    if(!apps.length && !files.length){
+      results.innerHTML = '<div class="empty">No matches</div>';
+    }
+    apps.forEach(a=>{
+      const div = document.createElement('div');
+      div.className='res';
+      div.innerHTML = `<span>${a.name}</span><span class="tag">app</span>`;
+      div.addEventListener('click', ()=>{ a.action(); results.classList.remove('open'); input.value=''; });
+      results.appendChild(div);
+    });
+    files.forEach(f=>{
+      const div = document.createElement('div');
+      div.className='res';
+      div.innerHTML = `<span>${f.name}</span><span class="tag">${f.type} ${f.path}</span>`;
+      div.addEventListener('click', ()=>{
+        if(f.type==='folder') openFileExplorer(f.path);
+        else openTextEditor(f.path);
+        results.classList.remove('open'); input.value='';
+      });
+      results.appendChild(div);
+    });
+    results.classList.add('open');
+  }
+
+  input.addEventListener('input', ()=>render(input.value));
+  input.addEventListener('focus', ()=>render(input.value));
+  document.addEventListener('click', e=>{
+    if(!document.getElementById('searchWrap').contains(e.target)) results.classList.remove('open');
+  });
+}
+
+// Set up desktop icons and the floating AI assistant popup
+initIcons();
+initAIAssistant();
+initSearchBar();
+initGoogleAuth();
+</script>
+</body>
+</html>

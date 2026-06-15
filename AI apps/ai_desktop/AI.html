@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jarvis AI Desktop</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <style>
+        :root {
+            /* BRUTALIST THEME CONSTANTS */
+            --bg-body-dark: #000000;
+            --bg-panel: #111111;
+            --bg-panel-hover: #222222;
+            --accent-color: #ffffff;
+            /* Stark white for accent/actions */
+            --text-main: #ffffff;
+            --text-muted: #888888;
+            --border-color: #333333;
+            --font-stack: 'Inconsolata', monospace;
+            --radius-main: 0px;
+            /* BOX */
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: var(--font-stack);
+            background-color: var(--bg-body-dark);
+            color: var(--text-main);
+            overflow: hidden;
+        }
+
+        /* Dashboard Grid Layout */
+        #dashboard-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            /* 50% 50% */
+            grid-template-rows: 60% 40%;
+            /* Top section larger */
+            height: 100vh;
+            width: 100vw;
+            padding: 0;
+            /* Full Bleed */
+            gap: 1px;
+            /* Slight gap for border effect */
+            background-color: var(--border-color);
+            /* Grid lines */
+        }
+
+        /* Quadrants */
+        .quadrant {
+            background-color: var(--bg-body-dark);
+            padding: 20px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Top Left: Shortcuts */
+        #quad-shortcuts {
+            border: none;
+        }
+
+        .shortcuts-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-top: 50px;
+            overflow-y: auto;
+            max-height: calc(100% - 60px);
+        }
+
+        .shortcut-btn {
+            background-color: transparent;
+            border: none;
+            border-bottom: 1px solid #222;
+            border-radius: 0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            cursor: pointer;
+            transition: all 0.1s;
+            flex-direction: row;
+            gap: 15px;
+            color: var(--text-muted);
+            font-family: var(--font-stack);
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            padding: 12px 10px;
+            width: 100%;
+        }
+
+        .shortcut-btn:hover {
+            background-color: var(--bg-panel-hover);
+            border-color: var(--text-main);
+            color: var(--text-main);
+        }
+
+        .shortcut-icon {
+            display: none;
+        }
+
+        /* Add Shortcut Button Specifics */
+        .add-shortcut-btn {
+            border: 1px dashed #333;
+            justify-content: center;
+            color: #555;
+            margin-top: 10px;
+        }
+
+        .add-shortcut-btn:hover {
+            opacity: 1;
+            border-style: solid;
+        }
+
+        /* Top Right: Recent Files */
+        /* #quad-recents {} - Removed empty rule */
+
+        .empty-state {
+            color: var(--text-muted);
+            text-align: center;
+            padding: 40px;
+            border: 1px dashed var(--border-color);
+            border-radius: var(--radius-main);
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+        }
+
+        /* Bottom Left: Clock */
+        #quad-clock {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+
+
+        .digital-time {
+            padding: 20px 60px;
+            border-radius: var(--radius-main);
+            font-size: 5rem;
+            font-family: var(--font-stack);
+            border: 1px solid var(--border-color);
+            text-align: center;
+            letter-spacing: 5px;
+            background: transparent;
+            border: none;
+        }
+
+        /* Bottom Right: AI Output */
+        #quad-ai {
+            background-color: #050505;
+        }
+
+        .ai-header {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .ai-chat-history {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            font-size: 0.95rem;
+            padding-right: 5px;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #000;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        .chat-msg {
+            padding: 0;
+            border-radius: 0;
+            max-width: 95%;
+            line-height: 1.5;
+            position: relative;
+        }
+
+        .chat-msg img {
+            max-width: 100%;
+            border: 1px solid #333;
+            margin-top: 5px;
+        }
+
+        .msg-ai {
+            color: #ddd;
+            align-self: flex-start;
+        }
+
+        .msg-ai::before {
+            content: "> ";
+            color: #666;
+        }
+
+        .msg-user {
+            color: #fff;
+            align-self: flex-start;
+            /* Terminal style aligns all left usually, but keep visual distinction */
+            opacity: 0.8;
+        }
+
+        .msg-user::before {
+            content: "$ ";
+            color: #fff;
+        }
+
+        .msg-error {
+            color: #ff5555;
+        }
+
+        .msg-system {
+            color: #888;
+            font-style: italic;
+            font-size: 0.8rem;
+        }
+
+        .ai-input-container {
+            position: relative;
+            border-top: 1px solid var(--border-color);
+            padding-top: 10px;
+        }
+
+        .ai-input-pill {
+            width: 100%;
+            background: #000;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-main);
+            padding: 15px;
+            color: white;
+            font-family: var(--font-stack);
+            font-size: 1rem;
+            padding-right: 50px;
+        }
+
+        .ai-input-pill:focus {
+            outline: none;
+            border-color: var(--text-main);
+        }
+
+        .ai-voice-status {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            /* Adjusted for padding */
+            margin-top: 5px;
+            transform: translateY(-50%);
+            width: 10px;
+            height: 10px;
+            background-color: #555;
+            border-radius: 0;
+            /* Square dot */
+            cursor: pointer;
+        }
+
+        .ai-voice-status.active {
+            background-color: #00ff00;
+            box-shadow: 0 0 10px #00ff00;
+        }
+
+        .backend-status {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background: #333;
+        }
+
+        .status-dot.active {
+            background: #00ff00;
+        }
+
+        /* WINDOW OVERLAY SYSTEM */
+        #window-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 500;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #app-window {
+            width: 95vw;
+            height: 90vh;
+            background: #000;
+            border: 2px solid var(--text-main);
+            border-radius: var(--radius-main);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 1);
+            /* Focus mode */
+        }
+
+        .window-header {
+            height: 40px;
+            background: var(--text-main);
+            /* Inverted header */
+            color: black;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .window-controls button {
+            background: black;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1.2rem;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .window-controls button:hover {
+            background: #ff0000;
+        }
+
+        .window-content {
+            flex: 1;
+            position: relative;
+            background: #000;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* MODALS */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: #000;
+            width: 500px;
+            padding: 30px;
+            border: 1px solid var(--text-main);
+            border-radius: var(--radius-main);
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            color: var(--text-main);
+            text-transform: uppercase;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 15px;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: var(--radius-main);
+            color: white;
+            margin-bottom: 25px;
+            font-family: inherit;
+            font-size: 1rem;
+        }
+
+        .form-input:focus {
+            border-color: white;
+            outline: none;
+        }
+
+        .btn-group {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+        }
+
+        .btn-cancel {
+            background: transparent;
+            border: 1px solid #333;
+            color: #888;
+            padding: 10px 20px;
+            border-radius: var(--radius-main);
+            cursor: pointer;
+            text-transform: uppercase;
+            font-family: inherit;
+        }
+
+        .btn-cancel:hover {
+            border-color: white;
+            color: white;
+        }
+
+        .btn-primary {
+            background: white;
+            border: none;
+            color: black;
+            padding: 10px 20px;
+            border-radius: var(--radius-main);
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: bold;
+            font-family: inherit;
+        }
+
+        .btn-primary:hover {
+            background: #ccc;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="dashboard-container" data-role="desktop-dashboard">
+
+        <!-- TOP LEFT: SHORTCUTS -->
+        <div id="quad-shortcuts" class="quadrant">
+            <!-- SETTINGS BUTTON -->
+            <button id="settings-btn-main" onclick="JarvisSystem.openSettings()" aria-label="Open Settings"
+                style="position: absolute; top: 15px; left: 15px; background: none; border: 1px solid #333; color: white; width:30px; height:30px; cursor: pointer; z-index: 10;">
+                <span style="font-size:1.2rem; line-height:1;">⚙</span>
+            </button>
+
+            <div
+                style="margin-bottom:10px; padding-left: 50px; color:var(--text-muted); font-size:0.8rem; text-transform:uppercase; letter-spacing:1px;">
+                System Applications</div>
+
+            <div class="shortcuts-grid" id="shortcuts-grid-container">
+                <!-- App: Browser -->
+                <button class="shortcut-btn" onclick="JarvisSystem.openApp('browser')"
+                    oncontextmenu="JarvisSystem.deleteShortcut('browser', this); return false;"
+                    aria-label="Open Cloud Browser" data-role="shortcut">
+                    <span class="shortcut-icon">NET</span>
+                    <span>Browser</span>
+                </button>
+
+                <!-- NEW: ADD SHORTCUT BUTTON -->
+                <button class="shortcut-btn add-shortcut-btn" onclick="JarvisSystem.openAddShortcut()"
+                    aria-label="Add New Shortcut" data-role="add-shortcut">
+                    <span class="shortcut-icon" style="font-size:1.5rem;">+</span>
+                    <span>NEW</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- TOP RIGHT: RECENTS -->
+        <div id="quad-recents" class="quadrant">
+            <div
+                style="margin-bottom:10px; color:var(--text-muted); font-size:0.8rem; text-transform:uppercase; letter-spacing:1px;">
+                Recent Access Logs</div>
+            <!-- Empty State as requested -->
+            <div class="empty-state">No recent activity detected.</div>
+        </div>
+
+        <!-- BOTTOM LEFT: CLOCK -->
+        <div id="quad-clock" class="quadrant">
+
+            <div class="digital-time" id="digital-time">--:--</div>
+        </div>
+
+        <!-- BOTTOM RIGHT: AI -->
+        <div id="quad-ai" class="quadrant">
+            <div class="ai-header">
+                <span>Terminal Output</span>
+                <span id="ai-mode-indicator">Voice Ready</span>
+            </div>
+            <div class="ai-chat-history" id="chat-history">
+                <div class="chat-msg msg-ai">System initialized. Waiting for input...</div>
+            </div>
+            <div class="ai-input-container">
+                <input type="text" id="ai-input" class="ai-input-pill" placeholder="Execute command...">
+                <div class="ai-voice-status" id="voice-dot" title="Voice Status" onclick="JarvisSystem.toggleVoice()">
+                </div>
+            </div>
+            <!-- Backend Status Indicator -->
+            <div class="backend-status" id="server-status">
+                <div class="status-dot" id="server-dot"></div>
+                <span id="server-text">Local Server Offline</span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- WINDOW OVERLAY -->
+    <div id="window-overlay">
+        <div id="app-window">
+            <div class="window-header">
+                <span id="window-title">APPLICATION</span>
+                <div class="window-controls">
+                    <button onclick="JarvisSystem.closeWindow()">X</button>
+                </div>
+            </div>
+            <div id="window-body" class="window-content"></div>
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <h3
+                style="margin-top:0; margin-bottom:30px; text-transform:uppercase; letter-spacing:2px; border-bottom:1px solid #333; padding-bottom:10px;">
+                Configuration</h3>
+
+            <label class="form-label">API Key (OpenAI)</label>
+            <input type="password" id="setting-api-key" placeholder="sk-..." class="form-input">
+
+            <div class="btn-group">
+                <button onclick="JarvisSystem.closeSettings()" class="btn-cancel">Discard</button>
+                <button onclick="JarvisSystem.saveSettings()" class="btn-primary">Commit</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="shortcut-modal" class="modal">
+        <div class="modal-content">
+            <h3
+                style="margin-top:0; margin-bottom:30px; text-transform:uppercase; letter-spacing:2px; border-bottom:1px solid #333; padding-bottom:10px;">
+                New Application</h3>
+            <label class="form-label">Identifier (Name)</label>
+            <input type="text" id="shortcut-name" placeholder="PROJECT_ALPHA" class="form-input">
+            <label class="form-label">Executable (File - Optional)</label>
+            <input type="file" id="shortcut-file" class="form-input" style="padding:10px;">
+            <div class="btn-group">
+                <button onclick="JarvisSystem.closeAddShortcut()" class="btn-cancel">Abort</button>
+                <button onclick="JarvisSystem.saveShortcut()" class="btn-primary">Initialize</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CANVAS FOR SCREENSHOTS (Hidden) -->
+    <video id="screenshot-video" style="display:none;" autoplay></video>
+    <canvas id="screenshot-canvas" style="display:none;"></canvas>
+
+    <!-- External Scripts -->
+    <script src="shortcuts.js"></script>
+
+    <script>
+        // --- CLOCK ---
+        function updateClock() {
+            const now = new Date();
+            const h = now.getHours();
+            const m = now.getMinutes();
+            const s = now.getSeconds();
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            const h12 = h % 12 || 12;
+            const mStr = m.toString().padStart(2, '0');
+            document.getElementById('digital-time').textContent = h12 + ':' + mStr + ' ' + ampm;
+
+
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // --- GLOBAL REFERENCES ---
+        const overlay = document.getElementById('window-overlay');
+        const winTitle = document.getElementById('window-title');
+        const winBody = document.getElementById('window-body');
+
+        const settingsModal = document.getElementById('settings-modal');
+        const settingInput = document.getElementById('setting-api-key');
+
+        const shortcutModal = document.getElementById('shortcut-modal');
+        const shortcutNameInput = document.getElementById('shortcut-name');
+        const shortcutFileInput = document.getElementById('shortcut-file');
+        const shortcutPathInput = document.getElementById('shortcut-path');
+        const shortcutsGrid = document.getElementById('shortcuts-grid-container');
+
+        // --- APP REGISTRY ---
+        let apps = {
+            'browser': {
+                name: 'Cloud Browser',
+                content: `
+                    <div style="display:flex; flex-direction:column; height:100%;">
+                        <div style="background:#111; padding:8px; display:flex; gap:10px; border-bottom:1px solid #333;">
+                            <input type="text" id="browser-url" value="https://www.google.com" style="flex:1; padding:10px; background:black; color:white; border:1px solid #333; font-family:monospace;">
+                            <button onclick="document.getElementById('demo-frame').src = document.getElementById('browser-url').value" style="background:white; color:black; border:none; padding:0 20px; cursor:pointer;">GO</button>
+                        </div>
+                        <iframe id="demo-frame" src="https://www.wikipedia.org" style="flex:1;"></iframe>
+                    </div>
+                `
+            }
+        };
+
+        // --- VOICE & AI LOGIC ---
+        let recognition = null;
+        let isListening = false;
+        let chatContext = [];
+
+        function initVoice() {
+            if ('webkitSpeechRecognition' in window) {
+                recognition = new webkitSpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = false;
+                recognition.lang = 'en-US';
+
+                recognition.onstart = function () {
+                    isListening = true;
+                    document.getElementById('ai-mode-indicator').textContent = "Voice Active";
+                    document.getElementById('voice-dot').classList.add('active');
+                };
+
+                recognition.onend = function () {
+                    isListening = false;
+                    document.getElementById('ai-mode-indicator').textContent = "Voice Standby";
+                    document.getElementById('voice-dot').classList.remove('active');
+                    if (JarvisSystem.voiceEnabled) recognition.start();
+                };
+
+                recognition.onresult = function (event) {
+                    const transcript = event.results[event.results.length - 1][0].transcript.trim();
+                    if (transcript) {
+                        JarvisSystem.appendToChat(transcript, 'user');
+                        JarvisSystem.processAI(transcript);
+                    }
+                };
+
+                try { recognition.start(); } catch (e) { console.log("Voice start error:", e); }
+            }
+        }
+
+        // --- EXPOSED SYSTEM API ---
+        window.JarvisSystem = {
+            voiceEnabled: true,
+            serverAvailable: false,
+            serverUrl: 'http://localhost:5000',
+
+            initServer: async () => {
+                // CHECK FOR ELECTRON
+                if (window.electronAPI) {
+                    JarvisSystem.serverAvailable = true;
+                    JarvisSystem.mode = 'electron';
+                    document.getElementById('server-dot').classList.add('active');
+                    document.getElementById('server-dot').style.backgroundColor = '#3b82f6'; // Blue for Electron
+                    document.getElementById('server-text').textContent = "ELECTRON + PYTHON CORE";
+                    console.log("Connected to Electron Main Process");
+                    // Do NOT return. Check Python too for Voice/Extra features.
+                }
+
+                // CHECK FOR PYTHON SERVER
+                try {
+                    const res = await fetch(JarvisSystem.serverUrl + '/health');
+                    if (res.ok) {
+                        JarvisSystem.serverAvailable = true;
+                        JarvisSystem.mode = 'python';
+                        document.getElementById('server-dot').classList.add('active');
+                        document.getElementById('server-text').textContent = "PYTHON SYSTEM LINKED";
+                        console.log("Connected to Python Server");
+                        // Trigger shortcut load from external file
+                        if (window.loadShortcuts) window.loadShortcuts();
+                    }
+                } catch (e) {
+                    console.log("Server not found.");
+                }
+            },
+
+            // --- App Management ---
+            openApp: async (appId) => {
+                const app = apps[appId.toLowerCase()];
+                if (app) {
+                    if (app.type === 'local' || app.type === 'server_lnk') {
+
+                        // MODE: ELECTRON
+                        if (JarvisSystem.mode === 'electron') {
+                            JarvisSystem.appendToChat(`Launching via Electron: ${app.name}...`, 'system');
+                            const target = app.path || app.filename;
+
+                            const res = await window.electronAPI.launchApp(target);
+                            if (res.status === 'success') {
+                                JarvisSystem.speak(`Launched ${app.name}`);
+                            } else {
+                                JarvisSystem.appendToChat(`Electron Launch Error: ${res.message}`, 'error');
+                            }
+                            return;
+                        }
+
+                        // MODE: PYTHON SERVER
+                        if (app.type === 'local') {
+                            // LAUNCH LOCAL APP VIA SERVER
+                            try {
+                                JarvisSystem.appendToChat(`Launching: ${app.name}...`, 'system');
+                                const res = await fetch(JarvisSystem.serverUrl + '/launch', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ path: app.path })
+                                });
+                                const data = await res.json();
+                                if (data.status === 'success') {
+                                    JarvisSystem.speak(`Opened ${app.name}`);
+                                } else {
+                                    JarvisSystem.appendToChat(`Launch Failed: ${data.message}`, 'error');
+                                }
+                            } catch (e) {
+                                JarvisSystem.appendToChat("Server Communication Error.", 'error');
+                            }
+                        } else if (app.type === 'server_lnk') {
+                            // LAUNCH LNK VIA SERVER
+                            try {
+                                JarvisSystem.appendToChat(`Executing Shortcut: ${app.name}...`, 'system');
+                                const res = await fetch(JarvisSystem.serverUrl + '/launch-lnk', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ filename: app.filename })
+                                });
+                                const data = await res.json();
+                                if (data.status === 'success') {
+                                    JarvisSystem.speak(`Executed ${app.name}`);
+                                } else {
+                                    JarvisSystem.appendToChat(`Execution Failed: ${data.message}`, 'error');
+                                }
+                            } catch (e) {
+                                JarvisSystem.appendToChat("Server Error.", 'error');
+                            }
+                        }
+                    } else {
+                        // OPEN WEB/TEXT APP IN WINDOW
+                        winTitle.textContent = app.name;
+                        winBody.innerHTML = app.content;
+                        overlay.style.display = 'flex';
+                    }
+                } else {
+                    JarvisSystem.appendToChat(`App not found: ${appId}`, 'error');
+                }
+            },
+
+            createEmptyApp: (name) => {
+                const appId = name.toLowerCase().replace(/\s+/g, '-');
+                const content = `
+                    <div style="padding:40px; color:white; font-family:var(--font-stack);">
+                        <h2 style="border-bottom:1px solid var(--border-color); padding-bottom:10px;">${name}</h2>
+                        <textarea style="width:100%; height:400px; background:#000; border:1px solid var(--border-color); color:white; padding:15px; font-family:monospace;" placeholder="_"></textarea>
+                    </div>
+                `;
+
+                apps[appId] = { name: name, content: content };
+                JarvisSystem.addShortcutButton(name, appId);
+                return appId;
+            },
+
+            // --- Shortcut Management ---
+            openAddShortcut: () => {
+                shortcutModal.style.display = 'flex';
+                shortcutNameInput.value = '';
+                shortcutFileInput.value = '';
+            },
+
+            loadShortcuts: () => {
+                // Legacy shim calling external
+                if (window.loadShortcuts) window.loadShortcuts();
+            },
+            closeAddShortcut: () => {
+                shortcutModal.style.display = 'none';
+            },
+
+            finalizeShortcut: (name) => {
+                JarvisSystem.closeAddShortcut();
+                JarvisSystem.appendToChat(`Created: "${name}"`, 'system');
+                JarvisSystem.speak(`Link created for ${name}.`);
+            },
+
+            addShortcutButton: (name, appId) => {
+                const newBtn = document.createElement('button');
+                newBtn.className = 'shortcut-btn';
+                newBtn.onclick = () => JarvisSystem.openApp(appId);
+                newBtn.setAttribute('aria-label', `Open ${name}`);
+                newBtn.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    JarvisSystem.deleteShortcut(appId, newBtn);
+                    return false;
+                };
+                newBtn.innerHTML = `<span class="shortcut-icon">DOC</span><span>${name}</span>`;
+                const plusBtn = shortcutsGrid.lastElementChild;
+                shortcutsGrid.insertBefore(newBtn, plusBtn);
+            },
+
+            saveShortcut: async () => {
+                const name = shortcutNameInput.value.trim();
+                const file = shortcutFileInput.files[0];
+
+                if (!name) {
+                    alert("NAME REQUIRED.");
+                    return;
+                }
+
+                if (file) {
+                    if (file.name.toLowerCase().endsWith('.lnk') && JarvisSystem.serverAvailable) {
+                        JarvisSystem.appendToChat("Uploading Shortcut...", "system");
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        try {
+                            const res = await fetch(JarvisSystem.serverUrl + '/upload', { method: 'POST', body: formData });
+                            const data = await res.json();
+                            if (data.status === 'success') {
+                                JarvisSystem.loadShortcuts();
+                                JarvisSystem.closeAddShortcut();
+                                JarvisSystem.speak(`Imported ${name}`);
+                                return;
+                            }
+                        } catch (e) {
+                            JarvisSystem.appendToChat("Upload Failed.", "error");
+                            return;
+                        }
+                    }
+
+                    // Blob based app (Fallback or non-shortcut files)
+                    const fileUrl = URL.createObjectURL(file);
+                    const appId = name.toLowerCase().replace(/\s+/g, '-');
+                    apps[appId] = {
+                        name: name,
+                        content: `<iframe src="${fileUrl}" style="width:100%; height:100%; border:none;"></iframe>`
+                    };
+                    JarvisSystem.addShortcutButton(name, appId);
+                } else {
+                    // Empty text app
+                    JarvisSystem.createEmptyApp(name);
+                }
+
+                JarvisSystem.closeAddShortcut();
+                JarvisSystem.appendToChat(`Created: "${name}"`, 'system');
+            },
+
+            deleteShortcut: async (appId, btnElement) => {
+                if (appId === 'browser') {
+                    alert("SYSTEM FILE - LOCKED.");
+                    return;
+                }
+                const appName = apps[appId] ? apps[appId].name : appId;
+                if (confirm(`DELETE "${appName}"?`)) {
+                    if (apps[appId] && apps[appId].type === 'server_lnk') {
+                        try {
+                            await fetch(JarvisSystem.serverUrl + '/delete-shortcut', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ filename: apps[appId].filename })
+                            });
+                        } catch (e) { console.log(e); }
+                    }
+                    delete apps[appId];
+                    if (btnElement) btnElement.remove();
+                    JarvisSystem.appendToChat(`Deleted: "${appName}"`, 'system');
+                }
+            },
+
+            // --- Settings Management ---
+            openSettings: () => {
+                settingInput.value = localStorage.getItem('jarvis_api_key') || "";
+                settingsModal.style.display = 'flex';
+            },
+            closeSettings: () => {
+                settingsModal.style.display = 'none';
+            },
+            saveSettings: () => {
+                let key = settingInput.value.replace(/[^\x20-\x7E]/g, '').trim();
+                localStorage.setItem('jarvis_api_key', key);
+                settingsModal.style.display = 'none';
+                JarvisSystem.appendToChat("API KEY UPDATED.", 'system');
+            },
+
+            // --- Window Management ---
+            closeWindow: () => {
+                overlay.style.display = 'none';
+                winBody.innerHTML = '';
+            },
+
+            toggleVoice: () => {
+                JarvisSystem.voiceEnabled = !JarvisSystem.voiceEnabled;
+
+                // UI Update
+                document.getElementById('ai-mode-indicator').textContent = JarvisSystem.voiceEnabled ? "Voice Active" : "Voice Off";
+                if (JarvisSystem.voiceEnabled) {
+                    document.getElementById('voice-dot').classList.add('active');
+
+                    // If Electron Mode, Use Python Server (Loop)
+                    if (JarvisSystem.mode === 'electron' || !('webkitSpeechRecognition' in window)) {
+                        JarvisSystem.startPythonVoiceLoop();
+                    } else {
+                        if (recognition) recognition.start();
+                    }
+                } else {
+                    document.getElementById('voice-dot').classList.remove('active');
+                    if (recognition) recognition.stop();
+                    JarvisSystem.voiceLoopActive = false;
+                }
+            },
+
+            voiceLoopActive: false,
+            startPythonVoiceLoop: async () => {
+                if (JarvisSystem.voiceLoopActive) return;
+                JarvisSystem.voiceLoopActive = true;
+
+                while (JarvisSystem.voiceEnabled && JarvisSystem.voiceLoopActive) {
+                    try {
+                        // Call Python Server
+                        const res = await fetch(JarvisSystem.serverUrl + '/listen', { method: 'POST' });
+                        const data = await res.json();
+
+                        if (data.status === 'success') {
+                            JarvisSystem.appendToChat(data.text, 'user');
+                            await JarvisSystem.processAI(data.text);
+                        } else {
+                            // If timeout, just loop again. If error, maybe pause?
+                            if (data.message && !data.message.includes('Timeout')) {
+                                console.log("Voice Error:", data.message);
+                                await new Promise(r => setTimeout(r, 1000));
+                            }
+                        }
+                    } catch (e) {
+                        console.log("Python Voice Connection Lost", e);
+                        await new Promise(r => setTimeout(r, 2000));
+                    }
+                }
+            },
+
+            captureScreen: async () => {
+                // METHOD 1: BACKEND (Silent)
+                if (JarvisSystem.serverAvailable) {
+                    try {
+                        JarvisSystem.appendToChat("Requesting silent capture...", 'system');
+                        const res = await fetch(JarvisSystem.serverUrl + '/screenshot');
+                        const data = await res.json();
+
+                        if (data.status === 'success') {
+                            JarvisSystem.processAI("Detailed analysis requested.", data.image);
+                        } else {
+                            throw new Error(data.message);
+                        }
+                    } catch (e) {
+                        JarvisSystem.appendToChat("Backend Error. Fallback init.", 'error');
+                        JarvisSystem.captureScreenBrowser();
+                    }
+                    return;
+                }
+
+                // METHOD 2: BROWSER (Interactive)
+                JarvisSystem.captureScreenBrowser();
+            },
+
+            captureScreenBrowser: async () => {
+                try {
+                    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                    const video = document.getElementById('screenshot-video');
+                    const canvas = document.getElementById('screenshot-canvas');
+
+                    video.srcObject = stream;
+                    await new Promise(r => video.onloadedmetadata = r); // Metadata wait
+
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                    const base64 = canvas.toDataURL('image/jpeg');
+                    stream.getTracks().forEach(track => track.stop()); // Stop immediately
+
+                    JarvisSystem.appendToChat("Browser capture complete. Analyzing...", 'system');
+                    JarvisSystem.processAI("Detailed analysis requested.", base64);
+
+                } catch (err) {
+                    JarvisSystem.appendToChat(`Capture Failed: ${err.message}`, 'error');
+                }
+            },
+
+            // --- Chat ---
+            appendToChat: (text, sender = 'user') => {
+                const history = document.getElementById('chat-history');
+                const div = document.createElement('div');
+                div.className = `chat-msg msg-\${sender}`;
+                div.textContent = text;
+                history.appendChild(div);
+                history.scrollTop = history.scrollHeight;
+
+                if (sender !== 'system') {
+                    chatContext.push({ role: sender === 'user' ? 'user' : 'assistant', content: text });
+                    if (chatContext.length > 20) chatContext.shift();
+                }
+            },
+
+            clearChat: () => {
+                const history = document.getElementById('chat-history');
+                history.innerHTML = '';
+                chatContext = [];
+                JarvisSystem.appendToChat("Buffer cleared.", 'system');
+            },
+
+            processAI: async (textInput, imageBase64 = null) => {
+                let key = localStorage.getItem('jarvis_api_key');
+                if (!key) {
+                    JarvisSystem.appendToChat("ERR: NO API KEY.", 'error');
+                    return;
+                }
+                key = key.replace(/[^\x20-\x7E]/g, '').trim();
+
+                try {
+                    const authHeader = 'Bearer ' + key;
+                    const appListStr = Object.keys(apps).map(id => `"${apps[id].name}" (ID: ${id})`).join(', ');
+                    const currentTime = new Date().toLocaleString();
+
+                    const systemPrompt = `You are Jarvis, a Local Desktop AI.
+                    TIME: ${currentTime}
+                    APPS: ${appListStr}
+                    
+                    CAPABILITIES:
+                    - You CAN control the computer via commands.
+                    - You CAN see the screen via [[SCREENSHOT]].
+                    - You CAN open files/apps via [[OPEN:id]].
+                    
+                    INSTRUCTIONS:
+                    - If user asks for time/date, answer using the TIME provided above.
+                    - If user implies visual analysis ("look", "scan", "what is on my screen"), output [[SCREENSHOT]].
+                    - If user provides a command mixed with a question, execute the command first.
+                    - Do NOT refuse requests. Output the relevant command.
+                    
+                    COMMANDS:
+                    [[OPEN:id]]
+                    [[CLOSE:WINDOW]]
+                    [[CLEAR:CHAT]]
+                    [[VOICE:TOGGLE]]
+                    [[CREATE:name]]
+                    [[SCREENSHOT]]
+                    
+                    Style: Terminal. Concise. No fluff.`;
+
+                    let messages = [
+                        { role: "system", content: systemPrompt },
+                        ...chatContext
+                    ];
+
+                    if (imageBase64) {
+                        messages.push({
+                            role: "user",
+                            content: [
+                                { type: "text", text: textInput },
+                                { type: "image_url", image_url: { url: imageBase64 } }
+                            ]
+                        });
+                    }
+
+                    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': authHeader
+                        },
+                        body: JSON.stringify({
+                            model: "gpt-4o",
+                            messages: messages
+                        })
+                    });
+
+                    if (response.status === 401) {
+                        JarvisSystem.appendToChat("ERR: 401 UNAUTHORIZED.", 'error');
+                        return;
+                    }
+
+                    if (!response.ok) {
+                        throw new Error(`API ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    let reply = data.choices[0].message.content;
+
+                    // --- GENERIC COMMAND PARSER ---
+                    const cmdRegex = /\[\[([A-Z]+)(?::(.+?))?\]\]/g;
+                    let match;
+
+                    while ((match = cmdRegex.exec(reply)) !== null) {
+                        const command = match[1];
+                        const arg = match[2] ? match[2].trim() : null;
+
+                        switch (command) {
+                            case 'OPEN': if (arg) JarvisSystem.openApp(arg); break;
+                            case 'CLOSE': if (arg && arg.toLowerCase() === 'window') JarvisSystem.closeWindow(); break;
+                            case 'CLEAR': if (arg && arg.toLowerCase() === 'chat') JarvisSystem.clearChat(); break;
+                            case 'VOICE': if (arg && arg.toLowerCase() === 'toggle') JarvisSystem.toggleVoice(); break;
+                            case 'CREATE': if (arg) { JarvisSystem.createEmptyApp(arg); JarvisSystem.appendToChat(`Created: ${arg}`, 'system'); } break;
+                            case 'SCREENSHOT': JarvisSystem.captureScreen(); break;
+                        }
+                    }
+
+                    const cleanReply = reply.replace(cmdRegex, '').trim();
+                    if (cleanReply) JarvisSystem.appendToChat(cleanReply, 'ai');
+
+                } catch (error) {
+                    JarvisSystem.appendToChat('NET ERROR: ' + error.message, 'error');
+                }
+            }
+        };
+
+        const aiInput = document.getElementById('ai-input');
+        aiInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && aiInput.value.trim()) {
+                const text = aiInput.value.trim();
+                aiInput.value = '';
+
+                if (text === '/clear') {
+                    JarvisSystem.clearChat();
+                    return;
+                }
+
+                JarvisSystem.appendToChat(text, 'user');
+                JarvisSystem.processAI(text);
+            }
+        });
+
+        setTimeout(initVoice, 1000);
+        setTimeout(JarvisSystem.initServer, 500);
+
+        // --- DRAG DROP SHORTCUTS ---
+        const dropZone = document.getElementById('quad-shortcuts');
+        if (dropZone) {
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.style.border = '2px dashed var(--text-main)';
+            });
+            dropZone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                dropZone.style.border = 'none';
+            });
+            dropZone.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                dropZone.style.border = 'none';
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    const file = files[0];
+                    if (window.handleShortcutUpload) {
+                        window.handleShortcutUpload(file);
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

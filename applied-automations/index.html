@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Applied Automations | Intelligent Systems for the Modern Enterprise</title>
+<meta name="description" content="Applied Automations delivers cutting-edge automation solutions that streamline workflows, reduce costs, and accelerate growth.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --black: #0a0a0a;
+    --white: #ffffff;
+    --gray-100: #f5f5f5;
+    --gray-200: #e8e8e8;
+    --gray-400: #9a9a9a;
+    --gray-700: #3a3a3a;
+    --accent: #1a1a1a;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--white);
+    color: var(--black);
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; width: 100%; z-index: 1000;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.2rem 5%;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid transparent;
+    transition: border-color .3s, box-shadow .3s;
+  }
+  nav.scrolled { border-color: var(--gray-200); box-shadow: 0 2px 20px rgba(0,0,0,.06); }
+
+  .nav-logo {
+    font-size: 1.1rem; font-weight: 900; letter-spacing: -.5px;
+    text-transform: uppercase; text-decoration: none; color: var(--black);
+  }
+  .nav-logo span { display: inline-block; width: 8px; height: 8px; background: var(--black); border-radius: 50%; margin-left: 4px; vertical-align: middle; }
+
+  .nav-links { display: flex; gap: 2.5rem; list-style: none; }
+  .nav-links a { text-decoration: none; color: var(--gray-700); font-size: .9rem; font-weight: 600; transition: color .2s; position: relative; }
+  .nav-links a::after { content:''; position:absolute; bottom:-3px; left:0; width:0; height:2px; background:var(--black); transition: width .25s; }
+  .nav-links a:hover { color: var(--black); }
+  .nav-links a:hover::after { width: 100%; }
+
+  .nav-cta {
+    background: var(--black); color: var(--white);
+    padding: .6rem 1.5rem; border-radius: 40px;
+    font-size: .85rem; font-weight: 700; text-decoration: none;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .nav-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,.2); }
+
+  /* ── HERO ── */
+  #hero {
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    position: relative; overflow: hidden;
+    padding: 8rem 5% 4rem;
+    text-align: center;
+  }
+
+  canvas#heroCanvas {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    pointer-events: none; opacity: .07;
+  }
+
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: .5rem;
+    background: var(--gray-100); border: 1px solid var(--gray-200);
+    padding: .4rem 1rem; border-radius: 40px;
+    font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    margin-bottom: 2rem;
+    animation: fadeUp .8s ease both;
+  }
+  .hero-badge .dot { width: 6px; height: 6px; background: var(--black); border-radius: 50%; animation: pulse 1.5s infinite; }
+
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+
+  .hero-h1 {
+    font-size: clamp(3rem, 8vw, 7rem);
+    font-weight: 900; line-height: 1.0;
+    letter-spacing: -3px;
+    max-width: 900px;
+    animation: fadeUp .9s .1s ease both;
+  }
+  .hero-h1 em { font-style: normal; position: relative; display: inline-block; }
+  .hero-h1 em::after {
+    content: '';
+    position: absolute; bottom: 4px; left: 0; width: 100%; height: 4px;
+    background: var(--black); border-radius: 2px;
+    transform: scaleX(0); transform-origin: left;
+    animation: lineGrow 1s 1s ease forwards;
+  }
+  @keyframes lineGrow { to { transform: scaleX(1); } }
+
+  .hero-sub {
+    max-width: 580px; margin: 2rem auto;
+    font-size: 1.1rem; color: var(--gray-400); line-height: 1.7; font-weight: 400;
+    animation: fadeUp 1s .2s ease both;
+  }
+
+  .contact-pair { display: flex; flex-direction: column; align-items: center; gap: .45rem; }
+  .contact-info { font-size: .78rem; color: var(--gray-400); font-weight: 600; letter-spacing: .01em; }
+  .hero-actions { display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center;
+    animation: fadeUp 1s .35s ease both;
+  }
+
+  .btn-primary {
+    background: var(--black); color: var(--white);
+    padding: .9rem 2.2rem; border-radius: 40px;
+    font-size: 1rem; font-weight: 700; text-decoration: none;
+    transition: transform .2s, box-shadow .2s;
+    display: inline-flex; align-items: center; gap: .5rem;
+  }
+  .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0,0,0,.25); }
+  .btn-primary svg { transition: transform .2s; }
+  .btn-primary:hover svg { transform: translateX(4px); }
+
+  .btn-secondary {
+    background: transparent; color: var(--black);
+    padding: .9rem 2.2rem; border-radius: 40px;
+    font-size: 1rem; font-weight: 700; text-decoration: none;
+    border: 2px solid var(--gray-200);
+    transition: border-color .2s, background .2s;
+  }
+  .btn-secondary:hover { border-color: var(--black); background: var(--gray-100); }
+
+
+
+  @keyframes fadeUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+
+
+
+  /* ── SERVICES ── */
+  #services {
+    padding: 7rem 5%;
+    background: var(--white);
+  }
+  .section-header { text-align: center; margin-bottom: 4rem; }
+  .section-tag {
+    display: inline-block; font-size: .78rem; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--gray-400);
+    margin-bottom: 1rem;
+  }
+  .section-h2 {
+    font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 900;
+    letter-spacing: -2px; line-height: 1.1;
+  }
+
+  .services-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem; max-width: 1100px; margin: 0 auto;
+  }
+
+  .card {
+    background: var(--gray-100); border-radius: 20px;
+    padding: 2.5rem; cursor: default;
+    transition: transform .3s, box-shadow .3s, background .3s;
+    position: relative; overflow: hidden;
+  }
+  .card::before {
+    content: ''; position: absolute; inset: 0;
+    background: var(--black); transform: translateY(100%);
+    transition: transform .4s cubic-bezier(.16,1,.3,1); z-index: 0;
+  }
+  .card:hover::before { transform: translateY(0); }
+  .card:hover { transform: translateY(-6px); box-shadow: 0 20px 50px rgba(0,0,0,.15); }
+  .card:hover .card-icon, .card:hover .card-title, .card:hover .card-text { color: var(--white); }
+
+  .card > * { position: relative; z-index: 1; }
+
+  .card-icon { font-size: 2rem; margin-bottom: 1.2rem; display: block; transition: color .3s; }
+  .card-title { font-size: 1.15rem; font-weight: 800; margin-bottom: .7rem; transition: color .3s; }
+  .card-text { font-size: .9rem; color: var(--gray-400); line-height: 1.65; transition: color .3s; }
+  .card:hover .card-text { color: rgba(255,255,255,.65); }
+
+  /* ── HOW IT WORKS ── */
+  #how {
+    background: var(--black); color: var(--white);
+    padding: 7rem 5%;
+  }
+  #how .section-tag { color: rgba(255,255,255,.4); }
+  #how .section-h2 { color: var(--white); }
+
+  .steps { display: flex; flex-direction: column; gap: 0; max-width: 700px; margin: 4rem auto 0; }
+
+  .step {
+    display: flex; gap: 2rem; align-items: flex-start;
+    padding-bottom: 3rem; position: relative;
+  }
+  .step:not(:last-child)::after {
+    content: ''; position: absolute;
+    left: 22px; top: 48px; bottom: 0; width: 2px;
+    background: rgba(255,255,255,.1);
+  }
+  .step-num {
+    flex-shrink: 0; width: 46px; height: 46px;
+    border: 2px solid rgba(255,255,255,.2); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: .85rem; color: rgba(255,255,255,.6);
+    transition: border-color .3s, color .3s;
+  }
+  .step.active .step-num { border-color: var(--white); color: var(--white); }
+  .step-body {}
+  .step-title { font-size: 1.1rem; font-weight: 800; margin-bottom: .5rem; }
+  .step-desc { font-size: .9rem; color: rgba(255,255,255,.5); line-height: 1.65; }
+
+  /* ── CTA ── */
+  #cta {
+    padding: 8rem 5%;
+    text-align: center;
+    background: var(--white);
+    position: relative; overflow: hidden;
+  }
+  .cta-bg {
+    position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse 60% 60% at 50% 50%, rgba(0,0,0,.04) 0%, transparent 70%);
+  }
+  #cta .section-h2 { max-width: 700px; margin: 0 auto 1.5rem; }
+  #cta p { color: var(--gray-400); font-size: 1.05rem; margin-bottom: 2.5rem; }
+
+  /* ── FOOTER ── */
+  footer {
+    background: var(--black); color: rgba(255,255,255,.5);
+    padding: 3rem 5%;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+    font-size: .85rem;
+  }
+  .footer-logo { font-weight: 900; font-size: 1rem; color: var(--white); text-transform: uppercase; letter-spacing: .05em; }
+  .footer-links { display: flex; gap: 2rem; list-style: none; }
+  .footer-links a { color: rgba(255,255,255,.4); text-decoration: none; transition: color .2s; }
+  .footer-links a:hover { color: var(--white); }
+
+  /* ── REVEAL ANIMATIONS ── */
+  .reveal { opacity: 0; transform: translateY(30px); transition: opacity .7s ease, transform .7s ease; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* ── MOBILE ── */
+  @media(max-width: 680px) {
+    .nav-links { display: none; }
+    .hero-h1 { letter-spacing: -1px; }
+    footer { flex-direction: column; text-align: center; }
+    .footer-links { flex-wrap: wrap; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="navbar">
+  <a href="#" class="nav-logo">Applied Automations<span></span></a>
+  <ul class="nav-links">
+    <li><a href="#services">Services</a></li>
+    <li><a href="#how">How It Works</a></li>
+    <li><a href="#cta">Contact</a></li>
+  </ul>
+  <a href="#cta" class="nav-cta">Get Started</a>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <canvas id="heroCanvas"></canvas>
+  <div class="hero-badge"><span class="dot"></span>AI-Powered Automation</div>
+  <h1 class="hero-h1">Automate. <em>Accelerate</em>. Dominate.</h1>
+  <p class="hero-sub">We build AI-driven automation systems that eliminate repetitive work, unlock operational efficiency, and free you to focus on what truly matters.</p>
+  <div class="hero-actions">
+    <a href="#cta" class="btn-primary">
+      Start Automating
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </a>
+    <a href="#services" class="btn-secondary">Explore Services</a>
+  </div>
+
+</section>
+
+
+
+<!-- SERVICES -->
+<section id="services">
+  <div class="section-header reveal">
+    <span class="section-tag">What We Do</span>
+    <h2 class="section-h2">AI Automation Built<br>for Real Results</h2>
+  </div>
+  <div class="services-grid">
+    <div class="card reveal">
+      <span class="card-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 2 13 9 20 9"/><path d="M3 14a9 9 0 0 1 9-9h8v9"/><polyline points="11 22 11 15 4 15"/></svg></span>
+      <h3 class="card-title">AI Workflow Automation</h3>
+      <p class="card-text">We map, redesign, and automate your core business workflows using AI — so you spend zero time on manual, repetitive tasks.</p>
+    </div>
+    <div class="card reveal">
+      <span class="card-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg></span>
+      <h3 class="card-title">AI Process Integration</h3>
+      <p class="card-text">We embed language models and computer vision directly into your pipelines for intelligent, adaptive decision-making.</p>
+    </div>
+    <div class="card reveal">
+      <span class="card-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="6" height="10" rx="1"/><rect x="16" y="7" width="6" height="10" rx="1"/><path d="M8 12h8"/></svg></span>
+      <h3 class="card-title">System Integration</h3>
+      <p class="card-text">We connect your CRM, ERP, databases, and SaaS tools into one AI-unified data ecosystem — no silos, no friction.</p>
+    </div>
+    <div class="card reveal">
+      <span class="card-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+      <h3 class="card-title">Compliance Automation</h3>
+      <p class="card-text">We automate audit trails, policy enforcement, and compliance checks so you stay ahead of regulatory requirements effortlessly.</p>
+    </div>
+    <div class="card reveal">
+      <span class="card-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></span>
+      <h3 class="card-title">Managed Automation</h3>
+      <p class="card-text">We handle ongoing monitoring, maintenance, and optimization of your automation stack — so you can focus on growth.</p>
+    </div>
+    <div class="card reveal">
+      <span class="card-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="14" rx="2"/><path d="M3 9h18"/><circle cx="7.5" cy="6" r=".5" fill="currentColor"/><circle cx="10.5" cy="6" r=".5" fill="currentColor"/><path d="M8 21h8M12 17v4"/></svg></span>
+      <h3 class="card-title">Website Creation</h3>
+      <p class="card-text">We design and build fast, modern websites tailored to your brand — from sleek landing pages to full business sites, all optimised for conversion and search.</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="section-header reveal">
+    <span class="section-tag">Our Process</span>
+    <h2 class="section-h2">From Discovery<br>to Deployment</h2>
+  </div>
+  <div class="steps">
+    <div class="step reveal">
+      <div class="step-num">01</div>
+      <div class="step-body">
+        <h3 class="step-title">Discovery &amp; Audit</h3>
+        <p class="step-desc">We analyze your current workflows, identify bottlenecks, and quantify the opportunity cost of manual processes.</p>
+      </div>
+    </div>
+    <div class="step reveal">
+      <div class="step-num">02</div>
+      <div class="step-body">
+        <h3 class="step-title">Solution Design</h3>
+        <p class="step-desc">We design a custom AI automation architecture tailored precisely to your goals, stack, and the way you work.</p>
+      </div>
+    </div>
+    <div class="step reveal">
+      <div class="step-num">03</div>
+      <div class="step-body">
+        <h3 class="step-title">Build &amp; Integrate</h3>
+        <p class="step-desc">We build, test, and deploy AI automation systems into your existing environment with zero disruption to operations.</p>
+      </div>
+    </div>
+    <div class="step reveal">
+      <div class="step-num">04</div>
+      <div class="step-body">
+        <h3 class="step-title">Launch &amp; Optimize</h3>
+        <p class="step-desc">Go live with confidence. We monitor performance, gather data, and continuously optimize for maximum ROI.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="cta">
+  <div class="cta-bg"></div>
+  <span class="section-tag reveal">Ready to Begin?</span>
+  <h2 class="section-h2 reveal">Let's Build Your<br>AI-Powered Future</h2>
+  <p class="reveal">Talk to us. No commitment, no jargon — just a clear path forward.</p>
+  <div class="hero-actions reveal">
+    <div class="contact-pair">
+      <a href="mailto:applied-automation@outlook.com" class="btn-primary">
+        Email Us
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <span class="contact-info">applied-automation@outlook.com</span>
+    </div>
+    <div class="contact-pair">
+      <a href="tel:+18432601637" class="btn-secondary">Call Us</a>
+      <span class="contact-info">+1 (843) 260 1637</span>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">Applied Automations</div>
+  <ul class="footer-links">
+    <li><a href="#services">Services</a></li>
+    <li><a href="#how">Process</a></li>
+    <li><a href="#cta">Contact</a></li>
+  </ul>
+  <div>&copy; 2026 Applied Automations. All rights reserved.</div>
+</footer>
+
+<script>
+/* ── CANVAS GRID ANIMATION ── */
+(function(){
+  const canvas = document.getElementById('heroCanvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, nodes = [], animId;
+  const NUM = 60;
+
+  function resize(){ W = canvas.width = canvas.offsetWidth; H = canvas.height = canvas.offsetHeight; }
+
+  function Node(){
+    this.x = Math.random()*W; this.y = Math.random()*H;
+    this.vx = (Math.random()-.5)*.4; this.vy = (Math.random()-.5)*.4;
+    this.r = Math.random()*2+1;
+  }
+
+  function init(){
+    nodes = [];
+    for(let i=0;i<NUM;i++) nodes.push(new Node());
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    for(let i=0;i<nodes.length;i++){
+      let n=nodes[i];
+      n.x+=n.vx; n.y+=n.vy;
+      if(n.x<0||n.x>W) n.vx*=-1;
+      if(n.y<0||n.y>H) n.vy*=-1;
+      ctx.beginPath();
+      ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+      ctx.fillStyle='#000'; ctx.fill();
+      for(let j=i+1;j<nodes.length;j++){
+        let m=nodes[j];
+        let dist=Math.hypot(n.x-m.x,n.y-m.y);
+        if(dist<120){
+          ctx.beginPath();
+          ctx.moveTo(n.x,n.y); ctx.lineTo(m.x,m.y);
+          ctx.strokeStyle=`rgba(0,0,0,${1-dist/120})`;
+          ctx.lineWidth=.6; ctx.stroke();
+        }
+      }
+    }
+    animId = requestAnimationFrame(draw);
+  }
+
+  window.addEventListener('resize',()=>{ resize(); init(); });
+  resize(); init(); draw();
+})();
+
+/* ── NAV SCROLL EFFECT ── */
+const navbar = document.getElementById('navbar');
+window.addEventListener('scroll',()=>{
+  navbar.classList.toggle('scrolled', window.scrollY > 30);
+});
+
+/* ── INTERSECTION OBSERVER (reveal) ── */
+const reveals = document.querySelectorAll('.reveal');
+const obs = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.classList.add('visible');
+      obs.unobserve(e.target);
+    }
+  });
+},{threshold:0.15});
+reveals.forEach(r=>obs.observe(r));
+
+/* ── STEP ACTIVE ON SCROLL ── */
+const steps = document.querySelectorAll('.step');
+const stepObs = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting) e.target.classList.add('active');
+  });
+},{threshold:.5});
+steps.forEach(s=>stepObs.observe(s));
+
+/* ── STAGGER CARD REVEALS ── */
+document.querySelectorAll('.card.reveal').forEach((card,i)=>{
+  card.style.transitionDelay = (i*.08)+'s';
+});
+</script>
+</body>
+</html>

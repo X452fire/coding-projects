@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTV Portal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            color: #ffffff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Sidebar Menu */
+        .sidebar {
+            width: 300px;
+            background: linear-gradient(180deg, #1a1f3a 0%, #0f1229 100%);
+            border-right: 2px solid #2a3f5f;
+            padding: 30px 20px;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+        }
+
+        .logo {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 40px;
+            text-align: center;
+            color: #00d4ff;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+
+        .category {
+            margin-bottom: 15px;
+            padding: 18px 20px;
+            background: rgba(42, 63, 95, 0.3);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 20px;
+            font-weight: 500;
+            border: 2px solid transparent;
+        }
+
+        .category:hover {
+            background: rgba(0, 212, 255, 0.2);
+            transform: translateX(10px);
+        }
+
+        .category.selected {
+            background: linear-gradient(90deg, #00d4ff 0%, #0099cc 100%);
+            border-color: #00d4ff;
+            box-shadow: 0 0 25px rgba(0, 212, 255, 0.6);
+            transform: translateX(10px);
+        }
+
+        .category-icon {
+            margin-right: 12px;
+            font-size: 24px;
+        }
+
+        /* Main Content Area */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Video Player */
+        .video-container {
+            flex: 1;
+            position: relative;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #videoPlayer {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .video-placeholder {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #6a7a99;
+        }
+
+        .video-placeholder h2 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        .video-placeholder p {
+            font-size: 22px;
+        }
+
+        /* Channel List Panel */
+        .channel-panel {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 400px;
+            background: linear-gradient(180deg, rgba(26, 31, 58, 0.95) 0%, rgba(15, 18, 41, 0.95) 100%);
+            backdrop-filter: blur(10px);
+            border-left: 2px solid #2a3f5f;
+            padding: 30px 20px;
+            overflow-y: auto;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            z-index: 10;
+        }
+
+        .channel-panel.active {
+            transform: translateX(0);
+        }
+
+        .channel-panel h2 {
+            font-size: 28px;
+            margin-bottom: 25px;
+            color: #00d4ff;
+            text-align: center;
+        }
+
+        .channel-item {
+            padding: 18px 20px;
+            background: rgba(42, 63, 95, 0.3);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .channel-item:hover {
+            background: rgba(0, 212, 255, 0.2);
+            transform: translateX(-5px);
+        }
+
+        .channel-item.selected {
+            background: linear-gradient(90deg, #00d4ff 0%, #0099cc 100%);
+            border-color: #00d4ff;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+
+        .channel-name {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .channel-description {
+            font-size: 16px;
+            color: #a0afc4;
+        }
+
+        /* Overlay Info */
+        .info-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, transparent 100%);
+            padding: 40px 30px 30px;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            z-index: 5;
+        }
+
+        .info-overlay.visible {
+            transform: translateY(0);
+        }
+
+        .current-channel {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #00d4ff;
+        }
+
+        .program-info {
+            font-size: 20px;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+
+        .program-description {
+            font-size: 18px;
+            color: #a0afc4;
+            line-height: 1.5;
+        }
+
+        /* Volume Control */
+        .volume-control {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 12px;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 15;
+        }
+
+        .volume-control.visible {
+            opacity: 1;
+        }
+
+        .volume-icon {
+            font-size: 24px;
+        }
+
+        .volume-bar {
+            width: 120px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .volume-level {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff 0%, #0099cc 100%);
+            transition: width 0.2s ease;
+        }
+
+        /* Keyboard Hint */
+        .keyboard-hint {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 12px;
+            padding: 20px 25px;
+            font-size: 16px;
+            color: #a0afc4;
+            z-index: 15;
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+        }
+
+        .keyboard-hint:hover {
+            opacity: 1;
+        }
+
+        .keyboard-hint h3 {
+            color: #00d4ff;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .keyboard-hint p {
+            margin: 5px 0;
+        }
+
+        /* Loading Indicator */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: #00d4ff;
+            z-index: 20;
+            display: none;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(42, 63, 95, 0.2);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 212, 255, 0.5);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 212, 255, 0.8);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .sidebar {
+                width: 250px;
+            }
+
+            .channel-panel {
+                width: 350px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                z-index: 20;
+                transform: translateX(-100%);
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .channel-panel {
+                width: 100%;
+            }
+
+            .keyboard-hint {
+                display: none;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .category,
+        .channel-item {
+            animation: fadeIn 0.3s ease;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Sidebar Menu -->
+        <div class="sidebar" id="sidebar">
+            <div class="logo">📺 IPTV Portal</div>
+            <div id="categoriesContainer"></div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="video-container">
+                <video id="videoPlayer" controls></video>
+                <div class="video-placeholder" id="placeholder">
+                    <h2>Welcome to IPTV Portal</h2>
+                    <p>Select a category and channel to start watching</p>
+                </div>
+                <div class="loading" id="loading">Loading...</div>
+            </div>
+
+            <!-- Info Overlay -->
+            <div class="info-overlay" id="infoOverlay">
+                <div class="current-channel" id="currentChannel">Channel Name</div>
+                <div class="program-info" id="programInfo">Program Title</div>
+                <div class="program-description" id="programDescription">Program description goes here</div>
+            </div>
+
+            <!-- Volume Control -->
+            <div class="volume-control" id="volumeControl">
+                <span class="volume-icon">🔊</span>
+                <div class="volume-bar">
+                    <div class="volume-level" id="volumeLevel"></div>
+                </div>
+                <span id="volumeText">100%</span>
+            </div>
+
+            <!-- Keyboard Hints -->
+            <div class="keyboard-hint">
+                <h3>⌨️ Keyboard Controls</h3>
+                <p><strong>↑↓</strong> Navigate Menu</p>
+                <p><strong>←→</strong> Navigate Channels</p>
+                <p><strong>Enter</strong> Select/Play</p>
+                <p><strong>+/-</strong> Volume Control</p>
+                <p><strong>I</strong> Toggle Info</p>
+            </div>
+
+            <!-- Channel Panel -->
+            <div class="channel-panel" id="channelPanel">
+                <h2 id="channelPanelTitle">Channels</h2>
+                <div id="channelsContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HLS.js Library for M3U8 Support -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+    <script>
+        // Channel Data Structure
+        const channelData = {
+            news: {
+                name: '📰 News',
+                icon: '📰',
+                channels: [
+                    {
+                        name: 'NBC News Now',
+                        description: 'Breaking news and top stories',
+                        program: 'Live News',
+                        programDesc: 'US and world news coverage',
+                        url: 'https://nbcnewsnow.global.ssl.fastly.net/nbcnewsnow/master.m3u8'
+                    },
+                    {
+                        name: 'Sky News',
+                        description: '24-hour rolling news',
+                        program: 'Live Coverage',
+                        programDesc: 'Latest developments and analysis',
+                        url: 'https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8'
+                    },
+                    {
+                        name: 'CNN International',
+                        description: 'Global news network',
+                        program: 'Breaking News',
+                        programDesc: 'Live news updates and reports',
+                        url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'
+                    }
+                ]
+            },
+            sports: {
+                name: '⚽ Sports',
+                icon: '⚽',
+                channels: [
+                    {
+                        name: 'Sports Central',
+                        description: 'Live sports and highlights',
+                        program: 'Game Day Coverage',
+                        programDesc: 'Live matches and analysis',
+                        url: 'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8'
+                    },
+                    {
+                        name: 'Extreme Sports',
+                        description: 'Action and adventure sports',
+                        program: 'Adrenaline Rush',
+                        programDesc: 'Extreme sports highlights',
+                        url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8'
+                    },
+                    {
+                        name: 'Football Today',
+                        description: 'Football news and matches',
+                        program: 'Match of the Day',
+                        programDesc: 'Live football coverage',
+                        url: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'
+                    }
+                ]
+            },
+            movies: {
+                name: '🎬 Movies',
+                icon: '🎬',
+                channels: [
+                    {
+                        name: 'Classic Movies',
+                        description: 'Timeless cinema classics',
+                        program: 'Cinema Classics',
+                        programDesc: 'Golden age of Hollywood',
+                        url: 'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8'
+                    },
+                    {
+                        name: 'Action Movies',
+                        description: 'Non-stop action and adventure',
+                        program: 'Action Theater',
+                        programDesc: 'Blockbuster action films',
+                        url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8'
+                    },
+                    {
+                        name: 'Sci-Fi Channel',
+                        description: 'Science fiction and fantasy',
+                        program: 'Future Vision',
+                        programDesc: 'Explore new worlds',
+                        url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'
+                    },
+                    {
+                        name: 'Drama & Romance',
+                        description: 'Emotional storytelling',
+                        program: 'Heart & Soul',
+                        programDesc: 'Award-winning dramas',
+                        url: 'https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8'
+                    }
+                ]
+            },
+            music: {
+                name: '🎵 Music',
+                icon: '🎵',
+                channels: [
+                    {
+                        name: 'Top Hits',
+                        description: 'Latest chart-topping music',
+                        program: 'Hot 100',
+                        programDesc: 'Today\'s biggest hits',
+                        url: 'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8'
+                    },
+                    {
+                        name: 'Rock Classics',
+                        description: 'Classic rock anthems',
+                        program: 'Rock Legends',
+                        programDesc: 'The best of rock music',
+                        url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'
+                    },
+                    {
+                        name: 'Jazz & Blues',
+                        description: 'Smooth jazz and blues',
+                        program: 'Midnight Jazz',
+                        programDesc: 'Relaxing jazz sessions',
+                        url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8'
+                    }
+                ]
+            },
+            entertainment: {
+                name: '🎭 Entertainment',
+                icon: '🎭',
+                channels: [
+                    {
+                        name: 'Comedy Central',
+                        description: 'Stand-up and sitcoms',
+                        program: 'Laugh Out Loud',
+                        programDesc: 'Best comedy shows',
+                        url: 'https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8'
+                    },
+                    {
+                        name: 'Documentary Plus',
+                        description: 'Fascinating documentaries',
+                        program: 'Planet Explorer',
+                        programDesc: 'Discover the world',
+                        url: 'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8'
+                    },
+                    {
+                        name: 'Reality TV',
+                        description: 'Reality shows and competitions',
+                        program: 'Real Life Stories',
+                        programDesc: 'Unscripted entertainment',
+                        url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'
+                    }
+                ]
+            }
+        };
+
+        // Application State
+        let currentCategory = 'news';
+        let currentCategoryIndex = 0;
+        let currentChannelIndex = 0;
+        let navigationMode = 'category'; // 'category' or 'channel'
+        let infoVisible = false;
+        let volumeVisible = false;
+        let volumeTimeout = null;
+        let hls = null;
+
+        // DOM Elements
+        const categoriesContainer = document.getElementById('categoriesContainer');
+        const channelsContainer = document.getElementById('channelsContainer');
+        const channelPanel = document.getElementById('channelPanel');
+        const channelPanelTitle = document.getElementById('channelPanelTitle');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const placeholder = document.getElementById('placeholder');
+        const loading = document.getElementById('loading');
+        const infoOverlay = document.getElementById('infoOverlay');
+        const currentChannelEl = document.getElementById('currentChannel');
+        const programInfoEl = document.getElementById('programInfo');
+        const programDescriptionEl = document.getElementById('programDescription');
+        const volumeControl = document.getElementById('volumeControl');
+        const volumeLevel = document.getElementById('volumeLevel');
+        const volumeText = document.getElementById('volumeText');
+
+        // Initialize Application
+        function init() {
+            renderCategories();
+            renderChannels(currentCategory);
+            setupEventListeners();
+            updateVolume(100);
+        }
+
+        // Render Categories
+        function renderCategories() {
+            const categories = Object.keys(channelData);
+            categoriesContainer.innerHTML = '';
+
+            categories.forEach((categoryKey, index) => {
+                const category = channelData[categoryKey];
+                const categoryEl = document.createElement('div');
+                categoryEl.className = 'category';
+                categoryEl.innerHTML = `<span class="category-icon">${category.icon}</span>${category.name}`;
+                categoryEl.dataset.category = categoryKey;
+                categoryEl.dataset.index = index;
+
+                if (index === currentCategoryIndex) {
+                    categoryEl.classList.add('selected');
+                }
+
+                categoryEl.addEventListener('click', () => selectCategory(index));
+                categoriesContainer.appendChild(categoryEl);
+            });
+        }
+
+        // Render Channels
+        function renderChannels(categoryKey) {
+            const category = channelData[categoryKey];
+            const channels = category.channels;
+
+            channelPanelTitle.textContent = category.name;
+            channelsContainer.innerHTML = '';
+
+            channels.forEach((channel, index) => {
+                const channelEl = document.createElement('div');
+                channelEl.className = 'channel-item';
+                channelEl.innerHTML = `
+                    <div class="channel-name">${channel.name}</div>
+                    <div class="channel-description">${channel.description}</div>
+                `;
+                channelEl.dataset.index = index;
+
+                if (index === currentChannelIndex) {
+                    channelEl.classList.add('selected');
+                }
+
+                channelEl.addEventListener('click', () => selectChannel(index));
+                channelsContainer.appendChild(channelEl);
+            });
+        }
+
+        // Select Category
+        function selectCategory(index) {
+            currentCategoryIndex = index;
+            const categories = Object.keys(channelData);
+            currentCategory = categories[currentCategoryIndex];
+            currentChannelIndex = 0;
+
+            renderCategories();
+            renderChannels(currentCategory);
+
+            if (navigationMode === 'category') {
+                channelPanel.classList.add('active');
+            }
+        }
+
+        // Select Channel
+        function selectChannel(index) {
+            currentChannelIndex = index;
+            renderChannels(currentCategory);
+        }
+
+        // Play Video
+        function playVideo() {
+            const categories = Object.keys(channelData);
+            const category = channelData[categories[currentCategoryIndex]];
+            const channel = category.channels[currentChannelIndex];
+
+            if (!channel) return;
+
+            // Show loading
+            loading.classList.add('active');
+            placeholder.style.display = 'none';
+
+            // Update info overlay
+            currentChannelEl.textContent = channel.name;
+            programInfoEl.textContent = channel.program;
+            programDescriptionEl.textContent = channel.programDesc;
+
+            // Show info overlay temporarily
+            showInfo();
+            setTimeout(() => hideInfo(), 3000);
+
+            // Load video
+            const videoUrl = channel.url;
+
+            if (Hls.isSupported() && videoUrl.includes('.m3u8')) {
+                if (hls) {
+                    hls.destroy();
+                }
+
+                hls = new Hls();
+                hls.loadSource(videoUrl);
+                hls.attachMedia(videoPlayer);
+
+                hls.on(Hls.Events.MANIFEST_PARSED, function () {
+                    loading.classList.remove('active');
+                    videoPlayer.play().catch(e => {
+                        console.error('Playback error:', e);
+                        loading.classList.remove('active');
+                        alert('Unable to play this stream. Please try another channel.');
+                    });
+                });
+
+                hls.on(Hls.Events.ERROR, function (event, data) {
+                    console.error('HLS error:', data);
+                    if (data.fatal) {
+                        loading.classList.remove('active');
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                alert('Network error: Unable to load stream. This may be due to CORS restrictions or the stream is offline. Details: ' + data.details);
+                                hls.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                alert('Media error: Trying to recover...');
+                                hls.recoverMediaError();
+                                break;
+                            default:
+                                hls.destroy();
+                                alert('Fatal stream error: ' + data.type + ' - ' + data.details);
+                                break;
+                        }
+                    }
+                });
+            } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+                // Native HLS support (Safari)
+                videoPlayer.src = videoUrl;
+                videoPlayer.addEventListener('loadedmetadata', function () {
+                    loading.classList.remove('active');
+                    videoPlayer.play();
+                });
+            } else {
+                // Fallback for regular video files
+                videoPlayer.src = videoUrl;
+                loading.classList.remove('active');
+                videoPlayer.play().catch(e => {
+                    console.error('Playback error:', e);
+                    alert('Unable to play this video. Your browser may not support this format.');
+                });
+            }
+        }
+
+        // Show/Hide Info
+        function showInfo() {
+            infoVisible = true;
+            infoOverlay.classList.add('visible');
+        }
+
+        function hideInfo() {
+            infoVisible = false;
+            infoOverlay.classList.remove('visible');
+        }
+
+        function toggleInfo() {
+            if (infoVisible) {
+                hideInfo();
+            } else {
+                showInfo();
+            }
+        }
+
+        // Volume Control
+        function updateVolume(level) {
+            level = Math.max(0, Math.min(100, level));
+            videoPlayer.volume = level / 100;
+            volumeLevel.style.width = level + '%';
+            volumeText.textContent = level + '%';
+
+            // Show volume control
+            volumeControl.classList.add('visible');
+            clearTimeout(volumeTimeout);
+            volumeTimeout = setTimeout(() => {
+                volumeControl.classList.remove('visible');
+            }, 2000);
+        }
+
+        function increaseVolume() {
+            const currentVolume = Math.round(videoPlayer.volume * 100);
+            updateVolume(currentVolume + 10);
+        }
+
+        function decreaseVolume() {
+            const currentVolume = Math.round(videoPlayer.volume * 100);
+            updateVolume(currentVolume - 10);
+        }
+
+        // Event Listeners
+        function setupEventListeners() {
+            // Keyboard Navigation
+            document.addEventListener('keydown', handleKeyPress);
+
+            // Video events
+            videoPlayer.addEventListener('ended', () => {
+                placeholder.style.display = 'block';
+            });
+        }
+
+        // Keyboard Handler
+        function handleKeyPress(e) {
+            const categories = Object.keys(channelData);
+            const maxCategories = categories.length;
+            const maxChannels = channelData[categories[currentCategoryIndex]].channels.length;
+
+            switch (e.key) {
+                case 'ArrowUp':
+                    e.preventDefault();
+                    if (navigationMode === 'category') {
+                        currentCategoryIndex = (currentCategoryIndex - 1 + maxCategories) % maxCategories;
+                        selectCategory(currentCategoryIndex);
+                    } else {
+                        currentChannelIndex = (currentChannelIndex - 1 + maxChannels) % maxChannels;
+                        selectChannel(currentChannelIndex);
+                    }
+                    break;
+
+                case 'ArrowDown':
+                    e.preventDefault();
+                    if (navigationMode === 'category') {
+                        currentCategoryIndex = (currentCategoryIndex + 1) % maxCategories;
+                        selectCategory(currentCategoryIndex);
+                    } else {
+                        currentChannelIndex = (currentChannelIndex + 1) % maxChannels;
+                        selectChannel(currentChannelIndex);
+                    }
+                    break;
+
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    navigationMode = 'category';
+                    channelPanel.classList.remove('active');
+                    renderCategories();
+                    break;
+
+                case 'ArrowRight':
+                    e.preventDefault();
+                    navigationMode = 'channel';
+                    channelPanel.classList.add('active');
+                    renderChannels(currentCategory);
+                    break;
+
+                case 'Enter':
+                    e.preventDefault();
+                    if (navigationMode === 'category') {
+                        navigationMode = 'channel';
+                        channelPanel.classList.add('active');
+                    } else {
+                        playVideo();
+                    }
+                    break;
+
+                case '+':
+                case '=':
+                    e.preventDefault();
+                    increaseVolume();
+                    break;
+
+                case '-':
+                case '_':
+                    e.preventDefault();
+                    decreaseVolume();
+                    break;
+
+                case 'i':
+                case 'I':
+                    e.preventDefault();
+                    toggleInfo();
+                    break;
+
+                case 'Escape':
+                    e.preventDefault();
+                    if (navigationMode === 'channel') {
+                        navigationMode = 'category';
+                        channelPanel.classList.remove('active');
+                    }
+                    break;
+            }
+        }
+
+        // Initialize on page load
+        init();
+    </script>
+</body>
+
+</html>

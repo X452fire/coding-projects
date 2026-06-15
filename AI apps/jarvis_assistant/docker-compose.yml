@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  jarvis-brain:
+    build: .
+    container_name: jarvis-brain
+    ports:
+      - "5000:5000"
+    environment:
+      - OPENAI_API_BASE=http://local-ai:8080/v1
+      - OPENAI_API_KEY=sk-xxxx
+      - MODEL_NAME=tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
+    depends_on:
+      - local-ai
+    volumes:
+      - ./memory.json:/app/memory.json # Persist memory
+
+  local-ai:
+    image: localai/localai:latest-aio-cpu
+    container_name: local-ai
+    ports:
+      - "8080:8080"
+    environment:
+      - MODELS_PATH=/models
+      - THREADS=4
+    volumes:
+      - ./models:/models
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:8080/readyz"]
+    #   interval: 1m
+    #   timeout: 2m
+    #   retries: 5
